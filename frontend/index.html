@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MARKETRA — Daily Marketing Briefing</title>
+  <meta name="description" content="MARKETRA: an AI marketing manager that diagnoses your business and hands you today's briefing.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="sky"></div>
+  <header class="masthead">
+    <div class="brand"><span class="cloud-mark"></span>MARKETRA</div>
+    <div class="dateline"><span id="statusText">checking backend…</span></div>
+  </header>
+
+  <main class="desk">
+    <aside class="profile-col">
+      <h2>The business</h2>
+      <form id="businessForm" class="profile-form">
+        <label>Name<input name="business_name" placeholder="Tekzo Online" required></label>
+        <label>Industry<input name="industry" placeholder="Daily use gadgets"></label>
+        <label>Target customer<input name="target_customer" placeholder="Young online shoppers"></label>
+        <label>Monthly budget<input name="monthly_marketing_budget" type="number" placeholder="10000"></label>
+        <label>Current goal<input name="current_goal" placeholder="Increase online sales"></label>
+        <button type="submit">Save profile</button>
+      </form>
+      <p class="profile-status" id="profileStatus">Not saved yet — MARKETRA will ask as you go.</p>
+    </aside>
+
+    <section class="feed-col">
+      <div class="feed" id="messages">
+        <article class="entry from-marketra">
+          <p class="byline">Marketra</p>
+          <p>Save your business on the left, then ask what to do — try "what should I do today?"</p>
+        </article>
+      </div>
+
+      <div class="plan" id="plan" hidden></div>
+
+      <form class="composer" id="composer">
+        <input id="prompt" autocomplete="off" placeholder="Ask about your marketing…">
+        <button class="send" type="submit">Send</button>
+      </form>
+      <button class="clear-link" id="clearBtn" type="button">Clear conversation</button>
+    </section>
+  </main>
+
+  <footer class="colophon">
+    <span>MARKETRA</span>
+    <span>Marketing diagnosis, not guesswork</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
