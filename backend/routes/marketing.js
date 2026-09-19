@@ -17,6 +17,13 @@ router.post("/marketing", async (req, res) => {
 
     const result = await askMarketra({ business, history, message });
 
+    if (result._rate_limited) {
+      return res.status(429).json({
+        error: "rate_limited",
+        message: result.diagnosis,
+      });
+    }
+
     if (businessId) await saveTurn(businessId, message, result);
 
     res.json(result);
