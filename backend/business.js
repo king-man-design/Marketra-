@@ -16,7 +16,7 @@ async function getBusiness(businessId) {
   return data;
 }
 
-async function getRecentHistory(businessId, limit = 8) {
+async function getRecentHistory(businessId, limit = 3) {
   if (!supabase || !businessId) return [];
   const { data, error } = await supabase
     .from("conversations")
