@@ -111,7 +111,14 @@ composer.addEventListener("submit", async (e) => {
         business: businessId ? undefined : businessProfile,
       }),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      if (res.status === 429) {
+        thinkingP.textContent = body.message || "MARKETRA has hit its daily AI usage limit. Please try again later.";
+        return;
+      }
+      throw new Error(body.error || "request failed");
+    }
     const plan = await res.json();
     thinkingP.textContent = plan.diagnosis || "Here's the briefing below.";
     renderPlan(plan);
