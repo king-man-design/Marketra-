@@ -73,7 +73,11 @@ businessForm.addEventListener("submit", async (e) => {
   } catch (err) {
     businessProfile = profile;
   }
-  localStorage.setItem("marketra_business_profile", JSON.stringify(businessProfile));
+  try {
+    localStorage.setItem("marketra_business_profile", JSON.stringify(businessProfile));
+  } catch (storageErr) {
+    console.warn("Could not save to localStorage:", storageErr);
+  }
   showChatScreen();
 });
 
