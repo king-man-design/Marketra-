@@ -36,7 +36,7 @@ async function askMarketra({ business, history = [], message, allowWebSearch = f
 
   const config = {
     systemInstruction: SYSTEM_PROMPT,
-    tools: allowWebSearch ? [{ googleSearch: {} }] : undefined,
+    ...(allowWebSearch && { tools: [{ googleSearch: {} }] }),
   };
   const model = process.env.AI_MODEL || "gemini-3.6-flash";
 
