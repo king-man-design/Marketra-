@@ -2,59 +2,77 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>MARKETRA</title>
-  <meta name="description" content="MARKETRA: an AI marketing manager that diagnoses your business and hands you today's briefing.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MARKETRA — AI Marketing Manager</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="ambient-glow"></div>
 
-  <!-- SCREEN 1: Business profile -->
-  <section id="profileScreen" class="screen profile-screen">
-    <div class="profile-card">
-      <span class="sticker">NEW</span>
-      <h1>MARKETRA</h1>
-      <p class="subtitle">Tell us about your business to get started</p>
-      <form id="businessForm" class="profile-form">
-        <input name="business_name" placeholder="Business name" required>
-        <input name="industry" placeholder="Industry">
-        <input name="target_customer" placeholder="Target customer">
-        <input name="monthly_marketing_budget" type="number" placeholder="Monthly budget">
-        <input name="current_goal" placeholder="Current goal">
-        <button type="submit">OK, LET'S GO</button>
-      </form>
-      <p class="profile-status" id="profileStatus"></p>
-    </div>
-  </section>
-
-  <!-- SCREEN 2: Chat dashboard -->
-  <section id="chatScreen" class="screen chat-screen" hidden>
-    <header class="topbar">
-      <button id="editProfileBtn" class="icon-btn" aria-label="Edit business profile">✎</button>
-      <div class="brand-badge">
-        <span class="brand-name">MARKETRA</span>
-        <span class="badge">BETA</span>
+  <main class="app-container">
+    <!-- PAGE 1: Business Setup -->
+    <section id="page-setup" class="page active">
+      <div class="orb-container">
+        <div class="glowing-orb"></div>
       </div>
-      <button id="clearBtn" class="icon-btn" aria-label="Clear conversation">⋮</button>
-    </header>
+      
+      <div class="setup-header">
+        <h1>MARKETRA</h1>
+        <p>Tell us about your business to get started</p>
+      </div>
 
-    <div class="feed" id="messages">
-      <article class="entry from-marketra">
-        <p>Ask what to do — try "what should I do today?"</p>
-      </article>
-    </div>
+      <form id="businessForm" class="setup-form">
+        <div class="input-group">
+          <input name="business_name" placeholder="Business Name (e.g. Tekzo)" required>
+        </div>
+        <div class="input-group">
+          <input name="industry" placeholder="Industry (e.g. Family gadgets)">
+        </div>
+        <div class="input-group">
+          <input name="target_customer" placeholder="Target Customer (e.g. Young students)">
+        </div>
+        <div class="input-group">
+          <input name="monthly_marketing_budget" type="number" placeholder="Monthly Budget ($ or ₹)">
+        </div>
+        <div class="input-group">
+          <input name="current_goal" placeholder="Current Goal (e.g. Reach 50 customers daily)">
+        </div>
 
-    <div class="plan" id="plan" hidden></div>
+        <button type="submit" class="btn-gradient">OK, let's go</button>
+      </form>
+    </section>
 
-    <form class="composer" id="composer">
-      <input id="prompt" autocomplete="off" placeholder="Enter Message">
-      <button class="send" type="submit" aria-label="Send">➤</button>
-    </form>
-    <p class="status-line" id="statusText">checking backend…</p>
-  </section>
+    <!-- PAGE 2: AI Agent Chat -->
+    <section id="page-chat" class="page">
+      <header class="chat-header">
+        <button id="backBtn" class="icon-btn" title="Edit Profile">←</button>
+        <div class="agent-title">
+          <span class="status-dot"></span>
+          <h2>MARKETRA 1.0 <span class="badge">BETA</span></h2>
+        </div>
+        <button id="clearBtn" class="icon-btn" title="Clear Chat">🗑️</button>
+      </header>
+
+      <div class="chat-viewport">
+        <div id="messages" class="feed">
+          <div class="entry from-marketra">
+            <p class="byline">MARKETRA</p>
+            <p>Your business profile is locked in. How can I help drive your marketing strategy today?</p>
+          </div>
+        </div>
+
+        <div id="plan" class="plan-card" hidden></div>
+      </div>
+
+      <form id="composer" class="chat-composer">
+        <input id="prompt" autocomplete="off" placeholder="Enter Message...">
+        <button class="send-btn" type="submit">↑</button>
+      </form>
+    </section>
+  </main>
 
   <script src="app.js"></script>
 </body>
