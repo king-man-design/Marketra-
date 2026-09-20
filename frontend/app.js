@@ -44,7 +44,8 @@ async function checkHealth() {
     const res = await fetch(`${API_BASE}/api/health`);
     if (!res.ok) throw new Error();
     statusText.textContent = "backend connected";
-  } catch {
+  } catch (err) {
+    console.error("Backend health check failed:", err);
     statusText.textContent = "backend offline — start the Node server";
   }
 }
@@ -52,39 +53,66 @@ checkHealth();
 
 businessForm.addEventListener("submit", async (e) => {
   e.preventDefault();
+
   const submitBtn = businessForm.querySelector("button[type=submit]");
-  const originalLabel = submitBtn.textContent;
-  submitBtn.disabled = true;
-  submitBtn.textContent = "Connecting…";
+  const originalLabel = submitBtn ? submitBtn.textContent : "OK, let's go";
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Connecting…";
+  }
   profileStatus.textContent = "Waking up the server — this can take up to a minute on first use.";
 
-  const formData = new FormData(businessForm);
-  const profile = Object.fromEntries(formData.entries());
-  if (businessId) profile.id = businessId;
-  if (profile.monthly_marketing_budget) {
-    profile.monthly_marketing_budget = Number(profile.monthly_marketing_budget);
-  }
+  let profile;
+  let controller;
+  let timeoutId;
 
   try {
+    const formData = new FormData(businessForm);
+    profile = Object.fromEntries(formData.entries());
+    if (businessId) profile.id = businessId;
+    if (profile.monthly_marketing_budget) {
+      profile.monthly_marketing_budget = Number(profile.monthly_marketing_budget);
+    }
+
+    controller = new AbortController();
+    timeoutId = setTimeout(() => controller.abort(), 15000);
+
     const res = await fetch(`${API_BASE}/api/business`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(profile),
+      signal: controller.signal,
     });
     if (!res.ok) throw new Error(await res.text());
+
     const saved = await res.json();
     businessId = saved.id;
     businessProfile = saved;
     localStorage.setItem("marketra_business_id", businessId);
+    profileStatus.textContent = "Profile saved.";
   } catch (err) {
-    businessProfile = profile;
+    console.error("Could not save business profile to backend:", err);
+    businessProfile = profile || businessProfile || {};
+    profileStatus.textContent =
+      err.name === "AbortError"
+        ? "The server took too long to respond. Continuing with your profile saved locally."
+        : "Could not reach the server. Continuing with your profile saved locally.";
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+
+    try {
+      localStorage.setItem("marketra_business_profile", JSON.stringify(businessProfile));
+    } catch (storageErr) {
+      console.error("Could not save business profile locally:", storageErr);
+    }
+
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalLabel;
+    }
+
+    showChatScreen();
   }
-  try {
-    localStorage.setItem("marketra_business_profile", JSON.stringify(businessProfile));
-  } catch (storageErr) {
-    console.warn("Could not save to localStorage:", storageErr);
-  }
-  showChatScreen();
 });
 
 editProfileBtn.addEventListener("click", showProfileScreen);
@@ -167,6 +195,7 @@ composer.addEventListener("submit", async (e) => {
     thinkingP.textContent = plan.diagnosis || "Here's the briefing below.";
     renderPlan(plan);
   } catch (err) {
+    console.error("Marketing request failed:", err);
     thinkingP.textContent =
       "Couldn't reach the MARKETRA backend. Make sure the Node server is running and GEMINI_API_KEY is set.";
   }
