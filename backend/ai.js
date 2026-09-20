@@ -21,7 +21,7 @@ function getStatusCode(err) {
   }
 }
 
-async function askMarketra({ business, history = [], message, allowWebSearch = true }) {
+async function askMarketra({ business, history = [], message, allowWebSearch = false }) {
   const businessBlock = business
     ? `BUSINESS PROFILE:\n${JSON.stringify(business, null, 2)}`
     : "BUSINESS PROFILE: none provided yet — ask for the essentials before diagnosing.";
