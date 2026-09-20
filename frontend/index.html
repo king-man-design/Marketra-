@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div id="debugBanner" style="display:none;position:fixed;top:0;left:0;right:0;background:#ff3b3b;color:#fff;padding:10px;font-family:monospace;font-size:12px;z-index:9999;word-break:break-word;"></div>
   <div class="ambient-glow"></div>
 
   <main class="app-container">
@@ -48,18 +49,21 @@
     <!-- PAGE 2: AI Agent Chat -->
     <section id="page-chat" class="page">
       <header class="chat-header">
-        <button id="backBtn" class="icon-btn" title="Edit Profile">←</button>
+        <button id="backBtn" class="icon-btn" title="Menu">☰</button>
         <div class="agent-title">
           <span class="status-dot"></span>
-          <h2>MARKETRA 1.0 <span class="badge">BETA</span></h2>
+          <span class="title-pill">MARKETRA <span class="badge">BETA</span> <span class="chevron">⌄</span></span>
         </div>
-        <button id="clearBtn" class="icon-btn" title="Clear Chat">🗑️</button>
+        <div class="header-actions">
+          <button id="newChatBtn" class="icon-btn" title="New chat">✎</button>
+          <button id="clearBtn" class="icon-btn" title="Menu">⋮</button>
+        </div>
       </header>
 
       <div class="chat-viewport">
         <div id="messages" class="feed">
           <div class="entry from-marketra">
-            <p class="byline">MARKETRA</p>
+            <span class="avatar"></span>
             <p>Your business profile is locked in. How can I help drive your marketing strategy today?</p>
           </div>
         </div>
@@ -68,7 +72,8 @@
       </div>
 
       <form id="composer" class="chat-composer">
-        <input id="prompt" autocomplete="off" placeholder="Enter Message...">
+        <button type="button" class="plus-btn" title="Attach" aria-hidden="true">+</button>
+        <input id="prompt" autocomplete="off" placeholder="Enter Message">
         <button class="send-btn" type="submit">↑</button>
       </form>
     </section>

@@ -1,9 +1,19 @@
+// TEMPORARY DEBUG AID: show any JS error directly on the page.
+window.addEventListener("error", (e) => {
+  const banner = document.getElementById("debugBanner");
+  if (banner) {
+    banner.style.display = "block";
+    banner.textContent = "JS ERROR: " + e.message + " (line " + e.lineno + ")";
+  }
+});
+
 const API_BASE = "https://marketra-ai.onrender.com";
 
 const pageSetup = document.getElementById("page-setup");
 const pageChat = document.getElementById("page-chat");
 const businessForm = document.getElementById("businessForm");
 const backBtn = document.getElementById("backBtn");
+const newChatBtn = document.getElementById("newChatBtn");
 const feed = document.getElementById("messages");
 const planEl = document.getElementById("plan");
 const composer = document.getElementById("composer");
@@ -59,8 +69,8 @@ businessForm.addEventListener("submit", async (e) => {
 function addEntry(role, text) {
   const el = document.createElement("div");
   el.className = `entry ${role === "ai" ? "from-marketra" : "from-you"}`;
-  el.innerHTML = `<p class="byline">${role === "ai" ? "MARKETRA" : "YOU"}</p><p></p>`;
-  el.querySelector("p:last-child").textContent = text;
+  el.innerHTML = `${role === "ai" ? '<span class="avatar"></span>' : ""}<p></p>`;
+  el.querySelector("p").textContent = text;
   feed.appendChild(el);
   feed.scrollTop = feed.scrollHeight;
   return el;
@@ -124,13 +134,15 @@ composer.addEventListener("submit", async (e) => {
   }
 });
 
-clearBtn.addEventListener("click", () => {
+function resetConversation() {
   feed.innerHTML = `
     <div class="entry from-marketra">
-      <p class="byline">MARKETRA</p>
+      <span class="avatar"></span>
       <p>Conversation reset. How can I assist with your marketing?</p>
     </div>
   `;
   planEl.hidden = true;
   planEl.innerHTML = "";
-});
+}
+newChatBtn.addEventListener("click", resetConversation);
+clearBtn.addEventListener("click", resetConversation);
