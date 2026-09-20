@@ -12,8 +12,14 @@ const composer = document.getElementById("composer");
 const promptInput = document.getElementById("prompt");
 const clearBtn = document.getElementById("clearBtn");
 
-let businessId = localStorage.getItem("marketra_business_id") || null;
-let businessProfile = JSON.parse(localStorage.getItem("marketra_business_profile") || "null");
+let businessId = null;
+let businessProfile = null;
+try {
+  businessId = localStorage.getItem("marketra_business_id") || null;
+  businessProfile = JSON.parse(localStorage.getItem("marketra_business_profile") || "null");
+} catch (err) {
+  console.warn("localStorage unavailable:", err);
+}
 
 function showChatScreen() {
   profileScreen.hidden = true;
