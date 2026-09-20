@@ -1,4 +1,5 @@
 const API_BASE = "https://marketra-ai.onrender.com";
+const FETCH_TIMEOUT_MS = 20000; // fail visibly instead of hanging on a cold backend
 
 const profileScreen = document.getElementById("profileScreen");
 const chatScreen = document.getElementById("chatScreen");
@@ -11,6 +12,18 @@ const planEl = document.getElementById("plan");
 const composer = document.getElementById("composer");
 const promptInput = document.getElementById("prompt");
 const clearBtn = document.getElementById("clearBtn");
+
+// fetch with a hard timeout — a slow/sleeping Render backend fails
+// visibly after FETCH_TIMEOUT_MS instead of hanging forever with no feedback.
+async function fetchWithTimeout(url, options = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 let businessId = null;
 let businessProfile = null;
@@ -36,83 +49,67 @@ function showProfileScreen() {
   }
 }
 
-// If we already have a saved profile from a previous visit, skip straight to chat.
 if (businessProfile) showChatScreen();
 
 async function checkHealth() {
   try {
-    const res = await fetch(`${API_BASE}/api/health`);
-    if (!res.ok) throw new Error();
+    const res = await fetchWithTimeout(`${API_BASE}/api/health`);
+    if (!res.ok) throw new Error(`status ${res.status}`);
     statusText.textContent = "backend connected";
   } catch (err) {
-    console.error("Backend health check failed:", err);
-    statusText.textContent = "backend offline — start the Node server";
+    console.error("[checkHealth]", err);
+    statusText.textContent = "backend offline or waking up — this can take up to a minute";
   }
 }
 checkHealth();
 
 businessForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-
   const submitBtn = businessForm.querySelector("button[type=submit]");
-  const originalLabel = submitBtn ? submitBtn.textContent : "OK, let's go";
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Connecting…";
-  }
+  const originalLabel = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = "CONNECTING…";
   profileStatus.textContent = "Waking up the server — this can take up to a minute on first use.";
+  profileStatus.classList.remove("error");
 
-  let profile;
-  let controller;
-  let timeoutId;
+  const formData = new FormData(businessForm);
+  const profile = Object.fromEntries(formData.entries());
+  if (businessId) profile.id = businessId;
+  if (profile.monthly_marketing_budget) {
+    profile.monthly_marketing_budget = Number(profile.monthly_marketing_budget);
+  }
 
   try {
-    const formData = new FormData(businessForm);
-    profile = Object.fromEntries(formData.entries());
-    if (businessId) profile.id = businessId;
-    if (profile.monthly_marketing_budget) {
-      profile.monthly_marketing_budget = Number(profile.monthly_marketing_budget);
-    }
-
-    controller = new AbortController();
-    timeoutId = setTimeout(() => controller.abort(), 15000);
-
-    const res = await fetch(`${API_BASE}/api/business`, {
+    const res = await fetchWithTimeout(`${API_BASE}/api/business`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(profile),
-      signal: controller.signal,
     });
-    if (!res.ok) throw new Error(await res.text());
-
+    if (!res.ok) throw new Error(`status ${res.status}`);
     const saved = await res.json();
     businessId = saved.id;
     businessProfile = saved;
-    localStorage.setItem("marketra_business_id", businessId);
-    profileStatus.textContent = "Profile saved.";
-  } catch (err) {
-    console.error("Could not save business profile to backend:", err);
-    businessProfile = profile || businessProfile || {};
-    profileStatus.textContent =
-      err.name === "AbortError"
-        ? "The server took too long to respond. Continuing with your profile saved locally."
-        : "Could not reach the server. Continuing with your profile saved locally.";
-  } finally {
-    if (timeoutId) clearTimeout(timeoutId);
-
     try {
-      localStorage.setItem("marketra_business_profile", JSON.stringify(businessProfile));
-    } catch (storageErr) {
-      console.error("Could not save business profile locally:", storageErr);
+      localStorage.setItem("marketra_business_id", businessId);
+    } catch (err) {
+      console.warn("Could not save business id:", err);
     }
-
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalLabel;
-    }
-
-    showChatScreen();
+  } catch (err) {
+    console.error("[businessForm submit]", err);
+    // No backend / DB yet — fall back to using the profile for this
+    // session only. This is expected behavior, not a failure state.
+    businessProfile = profile;
   }
+
+  try {
+    localStorage.setItem("marketra_business_profile", JSON.stringify(businessProfile));
+  } catch (err) {
+    console.warn("Could not save profile to localStorage:", err);
+  }
+
+  submitBtn.disabled = false;
+  submitBtn.textContent = originalLabel;
+  showChatScreen();
 });
 
 editProfileBtn.addEventListener("click", showProfileScreen);
@@ -120,7 +117,7 @@ editProfileBtn.addEventListener("click", showProfileScreen);
 function addEntry(role, text) {
   const el = document.createElement("article");
   el.className = `entry ${role === "ai" ? "from-marketra" : "from-you"}`;
-  el.innerHTML = `${role === "ai" ? '<span class="avatar"></span>' : ""}<p></p>`;
+  el.innerHTML = `<p></p>`;
   el.querySelector("p").textContent = text;
   feed.appendChild(el);
   feed.scrollTop = feed.scrollHeight;
@@ -155,7 +152,7 @@ function renderPlan(plan) {
 
   html += `<div class="block"><h4>Watch</h4>${list(plan.metrics, false)}</div>`;
   if (plan.decision_rule) {
-    html += `<div class="block"><h4>Decision rule</h4><p style="font-size:0.86rem;margin:0;background:none;border:none;padding:0;">${plan.decision_rule}</p></div>`;
+    html += `<div class="block"><h4>Decision rule</h4><p style="font-size:0.86rem;margin:0;background:none;border:none;box-shadow:none;padding:0;">${plan.decision_rule}</p></div>`;
   }
   planEl.innerHTML = html;
   planEl.querySelector(".plan-close").addEventListener("click", () => {
@@ -174,7 +171,7 @@ composer.addEventListener("submit", async (e) => {
   const thinkingP = thinkingEntry.querySelector("p");
 
   try {
-    const res = await fetch(`${API_BASE}/api/marketing`, {
+    const res = await fetchWithTimeout(`${API_BASE}/api/marketing`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -189,15 +186,17 @@ composer.addEventListener("submit", async (e) => {
         thinkingP.textContent = body.message || "MARKETRA has hit its daily AI usage limit. Please try again later.";
         return;
       }
-      throw new Error(body.error || "request failed");
+      throw new Error(body.error || `status ${res.status}`);
     }
     const plan = await res.json();
     thinkingP.textContent = plan.diagnosis || "Here's the briefing below.";
     renderPlan(plan);
   } catch (err) {
-    console.error("Marketing request failed:", err);
+    console.error("[composer submit]", err);
     thinkingP.textContent =
-      "Couldn't reach the MARKETRA backend. Make sure the Node server is running and GEMINI_API_KEY is set.";
+      err.name === "AbortError"
+        ? "The backend took too long to respond (it may be waking up). Please try again in a moment."
+        : "Couldn't reach the MARKETRA backend. Check the Render server and GEMINI_API_KEY.";
   }
 });
 

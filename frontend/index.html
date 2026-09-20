@@ -7,16 +7,15 @@
   <meta name="description" content="MARKETRA: an AI marketing manager that diagnoses your business and hands you today's briefing.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
   <!-- SCREEN 1: Business profile -->
   <section id="profileScreen" class="screen profile-screen">
-    <div class="orb-glow"></div>
     <div class="profile-card">
-      <div class="orb"></div>
+      <span class="sticker">NEW</span>
       <h1>MARKETRA</h1>
       <p class="subtitle">Tell us about your business to get started</p>
       <form id="businessForm" class="profile-form">
@@ -25,7 +24,7 @@
         <input name="target_customer" placeholder="Target customer">
         <input name="monthly_marketing_budget" type="number" placeholder="Monthly budget">
         <input name="current_goal" placeholder="Current goal">
-        <button type="submit">OK, let's go</button>
+        <button type="submit">OK, LET'S GO</button>
       </form>
       <p class="profile-status" id="profileStatus"></p>
     </div>
@@ -44,7 +43,6 @@
 
     <div class="feed" id="messages">
       <article class="entry from-marketra">
-        <span class="avatar"></span>
         <p>Ask what to do — try "what should I do today?"</p>
       </article>
     </div>
