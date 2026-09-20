@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MARKETRA — Daily Marketing Briefing</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>MARKETRA</title>
   <meta name="description" content="MARKETRA: an AI marketing manager that diagnoses your business and hands you today's briefing.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,48 +11,52 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="sky"></div>
-  <header class="masthead">
-    <div class="brand"><span class="cloud-mark"></span>MARKETRA</div>
-    <div class="dateline"><span id="statusText">checking backend…</span></div>
-  </header>
 
-  <main class="desk">
-    <aside class="profile-col">
-      <h2>The business</h2>
+  <!-- SCREEN 1: Business profile -->
+  <section id="profileScreen" class="screen profile-screen">
+    <div class="orb-glow"></div>
+    <div class="profile-card">
+      <div class="orb"></div>
+      <h1>MARKETRA</h1>
+      <p class="subtitle">Tell us about your business to get started</p>
       <form id="businessForm" class="profile-form">
-        <label>Name<input name="business_name" placeholder="Tekzo Online" required></label>
-        <label>Industry<input name="industry" placeholder="Daily use gadgets"></label>
-        <label>Target customer<input name="target_customer" placeholder="Young online shoppers"></label>
-        <label>Monthly budget<input name="monthly_marketing_budget" type="number" placeholder="10000"></label>
-        <label>Current goal<input name="current_goal" placeholder="Increase online sales"></label>
-        <button type="submit">Save profile</button>
+        <input name="business_name" placeholder="Business name" required>
+        <input name="industry" placeholder="Industry">
+        <input name="target_customer" placeholder="Target customer">
+        <input name="monthly_marketing_budget" type="number" placeholder="Monthly budget">
+        <input name="current_goal" placeholder="Current goal">
+        <button type="submit">OK, let's go</button>
       </form>
-      <p class="profile-status" id="profileStatus">Not saved yet — MARKETRA will ask as you go.</p>
-    </aside>
+      <p class="profile-status" id="profileStatus"></p>
+    </div>
+  </section>
 
-    <section class="feed-col">
-      <div class="feed" id="messages">
-        <article class="entry from-marketra">
-          <p class="byline">Marketra</p>
-          <p>Save your business on the left, then ask what to do — try "what should I do today?"</p>
-        </article>
+  <!-- SCREEN 2: Chat dashboard -->
+  <section id="chatScreen" class="screen chat-screen" hidden>
+    <header class="topbar">
+      <button id="editProfileBtn" class="icon-btn" aria-label="Edit business profile">✎</button>
+      <div class="brand-badge">
+        <span class="brand-name">MARKETRA</span>
+        <span class="badge">BETA</span>
       </div>
+      <button id="clearBtn" class="icon-btn" aria-label="Clear conversation">⋮</button>
+    </header>
 
-      <div class="plan" id="plan" hidden></div>
+    <div class="feed" id="messages">
+      <article class="entry from-marketra">
+        <span class="avatar"></span>
+        <p>Ask what to do — try "what should I do today?"</p>
+      </article>
+    </div>
 
-      <form class="composer" id="composer">
-        <input id="prompt" autocomplete="off" placeholder="Ask about your marketing…">
-        <button class="send" type="submit">Send</button>
-      </form>
-      <button class="clear-link" id="clearBtn" type="button">Clear conversation</button>
-    </section>
-  </main>
+    <div class="plan" id="plan" hidden></div>
 
-  <footer class="colophon">
-    <span>MARKETRA</span>
-    <span>Marketing diagnosis, not guesswork</span>
-  </footer>
+    <form class="composer" id="composer">
+      <input id="prompt" autocomplete="off" placeholder="Enter Message">
+      <button class="send" type="submit" aria-label="Send">➤</button>
+    </form>
+    <p class="status-line" id="statusText">checking backend…</p>
+  </section>
 
   <script src="app.js"></script>
 </body>

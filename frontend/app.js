@@ -1,8 +1,11 @@
 const API_BASE = "https://marketra-ai.onrender.com";
 
+const profileScreen = document.getElementById("profileScreen");
+const chatScreen = document.getElementById("chatScreen");
 const statusText = document.getElementById("statusText");
 const businessForm = document.getElementById("businessForm");
 const profileStatus = document.getElementById("profileStatus");
+const editProfileBtn = document.getElementById("editProfileBtn");
 const feed = document.getElementById("messages");
 const planEl = document.getElementById("plan");
 const composer = document.getElementById("composer");
@@ -10,7 +13,25 @@ const promptInput = document.getElementById("prompt");
 const clearBtn = document.getElementById("clearBtn");
 
 let businessId = localStorage.getItem("marketra_business_id") || null;
-let businessProfile = null;
+let businessProfile = JSON.parse(localStorage.getItem("marketra_business_profile") || "null");
+
+function showChatScreen() {
+  profileScreen.hidden = true;
+  chatScreen.hidden = false;
+}
+function showProfileScreen() {
+  chatScreen.hidden = true;
+  profileScreen.hidden = false;
+  if (businessProfile) {
+    for (const [key, value] of Object.entries(businessProfile)) {
+      const field = businessForm.elements[key];
+      if (field) field.value = value;
+    }
+  }
+}
+
+// If we already have a saved profile from a previous visit, skip straight to chat.
+if (businessProfile) showChatScreen();
 
 async function checkHealth() {
   try {
@@ -43,18 +64,20 @@ businessForm.addEventListener("submit", async (e) => {
     businessId = saved.id;
     businessProfile = saved;
     localStorage.setItem("marketra_business_id", businessId);
-    profileStatus.textContent = `Saved: ${saved.business_name}. MARKETRA will remember this business.`;
   } catch (err) {
     businessProfile = profile;
-    profileStatus.textContent = "Saved for this session only (no database connected yet).";
   }
+  localStorage.setItem("marketra_business_profile", JSON.stringify(businessProfile));
+  showChatScreen();
 });
+
+editProfileBtn.addEventListener("click", showProfileScreen);
 
 function addEntry(role, text) {
   const el = document.createElement("article");
   el.className = `entry ${role === "ai" ? "from-marketra" : "from-you"}`;
-  el.innerHTML = `<p class="byline">${role === "ai" ? "Marketra" : "You"}</p><p></p>`;
-  el.querySelector("p:last-child").textContent = text;
+  el.innerHTML = `${role === "ai" ? '<span class="avatar"></span>' : ""}<p></p>`;
+  el.querySelector("p").textContent = text;
   feed.appendChild(el);
   feed.scrollTop = feed.scrollHeight;
   return el;
@@ -72,6 +95,7 @@ function renderPlan(plan) {
   };
 
   let html = `
+    <button class="plan-close" type="button" aria-label="Close briefing">✕</button>
     <span class="stamp">Priority</span>
     <h3>${plan.priority?.title || "—"}</h3>
     <p class="reason">${plan.priority?.reason || ""}</p>
@@ -87,9 +111,13 @@ function renderPlan(plan) {
 
   html += `<div class="block"><h4>Watch</h4>${list(plan.metrics, false)}</div>`;
   if (plan.decision_rule) {
-    html += `<div class="block"><h4>Decision rule</h4><p style="font-size:0.86rem;margin:0;">${plan.decision_rule}</p></div>`;
+    html += `<div class="block"><h4>Decision rule</h4><p style="font-size:0.86rem;margin:0;background:none;border:none;padding:0;">${plan.decision_rule}</p></div>`;
   }
   planEl.innerHTML = html;
+  planEl.querySelector(".plan-close").addEventListener("click", () => {
+    planEl.hidden = true;
+    planEl.innerHTML = "";
+  });
 }
 
 composer.addEventListener("submit", async (e) => {
@@ -99,7 +127,7 @@ composer.addEventListener("submit", async (e) => {
   addEntry("user", message);
   promptInput.value = "";
   const thinkingEntry = addEntry("ai", "Thinking…");
-  const thinkingP = thinkingEntry.querySelector("p:last-child");
+  const thinkingP = thinkingEntry.querySelector("p");
 
   try {
     const res = await fetch(`${API_BASE}/api/marketing`, {
