@@ -52,6 +52,12 @@ checkHealth();
 
 businessForm.addEventListener("submit", async (e) => {
   e.preventDefault();
+  const submitBtn = businessForm.querySelector("button[type=submit]");
+  const originalLabel = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Connecting…";
+  profileStatus.textContent = "Waking up the server — this can take up to a minute on first use.";
+
   const formData = new FormData(businessForm);
   const profile = Object.fromEntries(formData.entries());
   if (businessId) profile.id = businessId;
