@@ -87,12 +87,32 @@ function renderPlan(plan) {
     return `<${tag}>${(arr || []).map((i) => `<li>${i}</li>`).join("")}</${tag}>`;
   };
 
-  planEl.innerHTML = `
+  let html = `
     <h3>${plan.priority?.title || "Strategy Directive"}</h3>
     <p style="color:#B1A8C3;">${plan.priority?.reason || ""}</p>
     <div class="block"><h4>Do Today</h4>${list(plan.today, true)}</div>
     <div class="block"><h4>Next Steps</h4>${list(plan.next, true)}</div>
   `;
+
+  if (plan.assets && Object.keys(plan.assets).length) {
+    html += `<div class="block"><h4>Assets</h4>` +
+      Object.entries(plan.assets).map(([k, v]) => `<p><b>${k}:</b> ${v}</p>`).join("") +
+      `</div>`;
+  }
+
+  if (plan.creative_ideas && plan.creative_ideas.length) {
+    html += `<div class="block"><h4>Creative Ideas</h4>` +
+      plan.creative_ideas.map((idea) =>
+        `<p><b>${idea.concept}</b><br><span style="color:#B1A8C3;">${idea.why_it_works}</span></p>`
+      ).join("") +
+      `</div>`;
+  }
+
+  if (plan.metrics && plan.metrics.length) {
+    html += `<div class="block"><h4>Watch</h4>${list(plan.metrics, false)}</div>`;
+  }
+
+  planEl.innerHTML = html;
 }
 
 composer.addEventListener("submit", async (e) => {
