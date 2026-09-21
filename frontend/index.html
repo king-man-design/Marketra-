@@ -2,82 +2,120 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MARKETRA — AI Marketing Manager</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>MARKETRA</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
-  <div id="debugBanner" style="display:none;position:fixed;top:0;left:0;right:0;background:#ff3b3b;color:#fff;padding:10px;font-family:monospace;font-size:12px;z-index:9999;word-break:break-word;"></div>
-  <div class="ambient-glow"></div>
+  <div id="debugBanner" class="debug-banner"></div>
 
-  <main class="app-container">
-    <!-- PAGE 1: Business Setup -->
-    <section id="page-setup" class="page active">
-      <div class="orb-container">
-        <div class="glowing-orb"></div>
-      </div>
-      
-      <div class="setup-header">
-        <h1>MARKETRA</h1>
-        <p>Tell us about your business to get started</p>
-      </div>
-
-      <form id="businessForm" class="setup-form">
-        <div class="input-group">
-          <input name="business_name" placeholder="Business Name (e.g. Tekzo)" required>
-        </div>
-        <div class="input-group">
-          <input name="industry" placeholder="Industry (e.g. Family gadgets)">
-        </div>
-        <div class="input-group">
-          <input name="target_customer" placeholder="Target Customer (e.g. Young students)">
-        </div>
-        <div class="input-group">
-          <input name="monthly_marketing_budget" type="number" placeholder="Monthly Budget (₹)">
-        </div>
-        <div class="input-group">
-          <input name="current_goal" placeholder="Current Goal (e.g. Reach 50 customers daily)">
-        </div>
-
-        <button type="submit" class="btn-gradient">OK, let's go</button>
+  <!-- AUTH -->
+  <section id="authView" class="view auth-view">
+    <div class="auth-card">
+      <h1>MARKETRA</h1>
+      <p class="subtitle" id="authSubtitle">Log in to your account</p>
+      <form id="authForm">
+        <input id="authEmail" type="email" placeholder="Email" required>
+        <input id="authPassword" type="password" placeholder="Password" required minlength="6">
+        <button type="submit" id="authSubmitBtn">Log In</button>
       </form>
-    </section>
+      <p class="auth-toggle">
+        <span id="authToggleText">Don't have an account?</span>
+        <button type="button" id="authToggleBtn">Sign up</button>
+      </p>
+      <p class="auth-error" id="authError"></p>
+    </div>
+  </section>
 
-    <!-- PAGE 2: AI Agent Chat -->
-    <section id="page-chat" class="page">
-      <header class="chat-header">
-        <button id="backBtn" class="icon-btn" title="Menu">☰</button>
-        <div class="agent-title">
-          <span class="status-dot"></span>
-          <span class="title-pill">MARKETRA <span class="badge">BETA</span> <span class="chevron">⌄</span></span>
-        </div>
-        <div class="header-actions">
-          <button id="newChatBtn" class="icon-btn" title="New chat">✎</button>
-          <button id="clearBtn" class="icon-btn" title="Menu">⋮</button>
-        </div>
-      </header>
+  <!-- ONBOARDING (first business profile) -->
+  <section id="onboardingView" class="view auth-view" hidden>
+    <div class="auth-card">
+      <h1>Tell us about your business</h1>
+      <form id="onboardingForm">
+        <input name="business_name" placeholder="Business name" required>
+        <input name="industry" placeholder="Industry">
+        <input name="target_customer" placeholder="Target customer">
+        <input name="monthly_marketing_budget" type="number" placeholder="Monthly Budget (₹)">
+        <input name="current_goal" placeholder="Current goal">
+        <button type="submit">Create Profile</button>
+      </form>
+      <p class="auth-error" id="onboardingError"></p>
+    </div>
+  </section>
 
-      <div class="chat-viewport">
-        <div id="messages" class="feed">
-          <div class="entry from-marketra">
-            <span class="avatar"></span>
-            <p>Your business profile is locked in. How can I help drive your marketing strategy today?</p>
+  <!-- MAIN APP -->
+  <div id="appShell" hidden>
+    <header class="app-topbar">
+      <span class="app-title" id="topBusinessName">MARKETRA</span>
+      <span class="status-dot" id="statusDot"></span>
+    </header>
+
+    <main class="app-main">
+      <!-- DASHBOARD -->
+      <section id="dashboardView" class="app-view">
+        <h2>Dashboard</h2>
+        <div class="stat-card">
+          <p class="stat-label">Business</p>
+          <p class="stat-value" id="dashBusinessName">—</p>
+        </div>
+        <div class="stat-row">
+          <div class="stat-card small">
+            <p class="stat-label">Monthly Budget</p>
+            <p class="stat-value" id="dashBudget">₹—</p>
+          </div>
+          <div class="stat-card small">
+            <p class="stat-label">Goal</p>
+            <p class="stat-value" id="dashGoal">—</p>
           </div>
         </div>
+        <button id="newChatFromDash" class="primary-btn">+ Start New Chat</button>
+        <h3 class="section-heading">Recent Chats</h3>
+        <div id="dashRecentList" class="session-list"></div>
+      </section>
 
+      <!-- CHAT -->
+      <section id="chatView" class="app-view" hidden>
+        <div id="messages" class="feed"></div>
         <div id="plan" class="plan-card" hidden></div>
-      </div>
+        <form id="composer" class="chat-composer">
+          <input id="prompt" autocomplete="off" placeholder="Enter Message">
+          <button class="send-btn" type="submit">↑</button>
+        </form>
+      </section>
 
-      <form id="composer" class="chat-composer">
-        <button type="button" class="plus-btn" title="Attach" aria-hidden="true">+</button>
-        <input id="prompt" autocomplete="off" placeholder="Enter Message">
-        <button class="send-btn" type="submit">↑</button>
-      </form>
-    </section>
-  </main>
+      <!-- HISTORY -->
+      <section id="historyView" class="app-view" hidden>
+        <h2>Chat History</h2>
+        <button id="newChatFromHistory" class="primary-btn">+ New Chat</button>
+        <div id="historyList" class="session-list"></div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="settingsView" class="app-view" hidden>
+        <h2>Settings</h2>
+        <form id="settingsForm">
+          <label>Business name<input name="business_name"></label>
+          <label>Industry<input name="industry"></label>
+          <label>Target customer<input name="target_customer"></label>
+          <label>Monthly Budget (₹)<input name="monthly_marketing_budget" type="number"></label>
+          <label>Current goal<input name="current_goal"></label>
+          <button type="submit">Save Changes</button>
+        </form>
+        <p class="auth-error" id="settingsStatus"></p>
+        <button id="signOutBtn" class="danger-btn">Sign Out</button>
+      </section>
+    </main>
+
+    <nav class="bottom-tabs">
+      <button class="tab-btn active" data-view="dashboard">🏠<span>Dashboard</span></button>
+      <button class="tab-btn" data-view="chat">💬<span>Chat</span></button>
+      <button class="tab-btn" data-view="history">🕘<span>History</span></button>
+      <button class="tab-btn" data-view="settings">⚙️<span>Settings</span></button>
+    </nav>
+  </div>
 
   <script src="app.js"></script>
 </body>
