@@ -16,41 +16,30 @@ async function getBusiness(businessId) {
   return data;
 }
 
-async function getRecentHistory(businessId, limit = 3) {
-  if (!supabase || !businessId) return [];
+async function getRecentHistory(sessionId, limit = 3) {
+  if (!supabase || !sessionId) return [];
   const { data, error } = await supabase
     .from("conversations")
     .select("user_message, ai_response, created_at")
-    .eq("business_id", businessId)
+    .eq("session_id", sessionId)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error || !data) return [];
 
-  // Flatten to Anthropic message format, oldest first.
   return data.reverse().flatMap((row) => [
     { role: "user", content: row.user_message },
     { role: "assistant", content: JSON.stringify(row.ai_response) },
   ]);
 }
 
-async function saveTurn(businessId, userMessage, aiResponse) {
-  if (!supabase || !businessId) return;
+async function saveTurn(sessionId, businessId, userMessage, aiResponse) {
+  if (!supabase || !sessionId) return;
   await supabase.from("conversations").insert({
-    business_id: businessId,
+    session_id: sessionId,
+    business_id: businessId || null,
     user_message: userMessage,
     ai_response: aiResponse,
   });
 }
 
-async function upsertBusiness(profile) {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  const { data, error } = await supabase
-    .from("businesses")
-    .upsert(profile)
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
-}
-
-module.exports = { getBusiness, getRecentHistory, saveTurn, upsertBusiness };
+module.exports = { getBusiness, getRecentHistory, saveTurn };
