@@ -198,10 +198,90 @@ async function loadDashboard() {
     .limit(3);
 
   renderSessionList(dashRecentList, sessions || []);
+  loadConnectedAccounts();
 }
 
 document.getElementById("newChatFromDash").addEventListener("click", () => startNewChat());
 document.getElementById("newChatFromHistory").addEventListener("click", () => startNewChat());
+
+// ---------- Phyllo social account connect ----------
+const connectSocialBtn = document.getElementById("connectSocialBtn");
+const connectStatus = document.getElementById("connectStatus");
+const connectedAccountsList = document.getElementById("connectedAccountsList");
+
+async function getAuthedFetchOptions(extra = {}) {
+  const { data } = await sb.auth.getSession();
+  const token = data?.session?.access_token;
+  return {
+    ...extra,
+    headers: { ...(extra.headers || {}), Authorization: `Bearer ${token}` },
+  };
+}
+
+connectSocialBtn.addEventListener("click", async () => {
+  connectStatus.textContent = "Starting connection…";
+  connectSocialBtn.disabled = true;
+  try {
+    const options = await getAuthedFetchOptions({ method: "POST" });
+    const res = await fetchWithTimeout(`${API_BASE}/api/phyllo/token`, options);
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `status ${res.status}`);
+    const data = await res.json();
+    const { sdk_token } = data;
+
+    // ⚠️ CONFIRM against Phyllo's current Connect SDK docs — this init
+    // call (constructor name, config shape, event names) is a best-effort
+    // placeholder based on common SDK patterns, not verified current API.
+    if (!window.PhylloConnect) {
+      throw new Error("Phyllo Connect SDK did not load. Confirm the script URL in index.html.");
+    }
+    const phylloConnect = window.PhylloConnect.initialize({
+      clientDisplayName: "MARKETRA",
+      environment: "staging",
+      userId: data.user_id,
+      token: sdk_token,
+    });
+    phylloConnect.on("accountConnected", () => {
+      connectStatus.textContent = "Connected! Syncing…";
+      setTimeout(loadConnectedAccounts, 2000);
+    });
+    phylloConnect.on("accountError", (err) => {
+      console.error("[phyllo connect]", err);
+      connectStatus.textContent = "Connection failed. Please try again.";
+    });
+    phylloConnect.on("exit", () => {
+      connectSocialBtn.disabled = false;
+    });
+    phylloConnect.open();
+  } catch (err) {
+    console.error("[connectSocial]", err);
+    connectStatus.textContent = err.message || "Could not start connection.";
+    connectSocialBtn.disabled = false;
+  }
+});
+
+async function loadConnectedAccounts() {
+  try {
+    const options = await getAuthedFetchOptions();
+    const res = await fetchWithTimeout(`${API_BASE}/api/phyllo/accounts`, options);
+    if (!res.ok) return;
+    const accounts = await res.json();
+    if (!accounts.length) {
+      connectedAccountsList.innerHTML = `<p class="empty-note">No accounts connected yet.</p>`;
+      return;
+    }
+    connectedAccountsList.innerHTML = accounts
+      .map(
+        (a) => `
+        <div class="session-item">
+          <span class="s-title">${a.platform || "Account"} ${a.handle ? "· @" + a.handle : ""}</span>
+          <span class="s-date">${a.connection_status}</span>
+        </div>`
+      )
+      .join("");
+  } catch (err) {
+    console.error("[loadConnectedAccounts]", err);
+  }
+}
 
 function renderSessionList(container, sessions) {
   if (!sessions.length) {
@@ -323,11 +403,12 @@ composer.addEventListener("submit", async (e) => {
   const thinkingP = thinkingEntry.querySelector("p");
 
   try {
-    const res = await fetchWithTimeout(`${API_BASE}/api/marketing`, {
+    const options = await getAuthedFetchOptions({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, businessId: currentBusiness.id, sessionId: currentSessionId }),
     });
+    const res = await fetchWithTimeout(`${API_BASE}/api/marketing`, options);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       if (res.status === 429) {

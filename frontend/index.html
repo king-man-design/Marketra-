@@ -8,6 +8,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <!-- ⚠️ CONFIRM this against Phyllo's current Connect SDK docs — placeholder URL -->
+  <script src="https://cdn.getphyllo.com/connect/v2/phyllo-connect.js"></script>
 </head>
 <body>
   <div id="debugBanner" class="debug-banner"></div>
@@ -72,6 +74,12 @@
           </div>
         </div>
         <button id="newChatFromDash" class="primary-btn">+ Start New Chat</button>
+
+        <h3 class="section-heading">Connected Accounts</h3>
+        <button id="connectSocialBtn" class="primary-btn secondary-style">📱 Connect Social Account</button>
+        <p class="auth-error" id="connectStatus"></p>
+        <div id="connectedAccountsList" class="session-list"></div>
+
         <h3 class="section-heading">Recent Chats</h3>
         <div id="dashRecentList" class="session-list"></div>
       </section>

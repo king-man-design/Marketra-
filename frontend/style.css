@@ -79,6 +79,12 @@ h1, h2, h3 { font-family: "Space Grotesk", sans-serif; margin: 0; }
 .stat-label { font-size: 0.72rem; color: var(--ink-secondary); margin: 0 0 4px; }
 .stat-value { font-size: 1.05rem; font-weight: 700; margin: 0; }
 
+.primary-btn.secondary-style {
+  background: none;
+  border: 1px solid var(--accent-purple);
+  color: var(--accent-purple);
+  margin-bottom: 10px;
+}
 .session-list { display: flex; flex-direction: column; gap: 8px; }
 .session-item {
   background: var(--bg-card); border: 1px solid var(--border-light);
