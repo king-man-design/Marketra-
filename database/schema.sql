@@ -68,9 +68,11 @@ alter table conversations enable row level security;
 alter table products enable row level security;
 alter table analytics enable row level security;
 
+drop policy if exists "Users manage their own businesses" on businesses;
 create policy "Users manage their own businesses" on businesses
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "Users manage sessions on their own businesses" on chat_sessions;
 create policy "Users manage sessions on their own businesses" on chat_sessions
   for all using (
     exists (select 1 from businesses b where b.id = business_id and b.user_id = auth.uid())
@@ -78,6 +80,7 @@ create policy "Users manage sessions on their own businesses" on chat_sessions
     exists (select 1 from businesses b where b.id = business_id and b.user_id = auth.uid())
   );
 
+drop policy if exists "Users manage conversations in their own sessions" on conversations;
 create policy "Users manage conversations in their own sessions" on conversations
   for all using (
     exists (
@@ -93,6 +96,7 @@ create policy "Users manage conversations in their own sessions" on conversation
     )
   );
 
+drop policy if exists "Users manage their own products" on products;
 create policy "Users manage their own products" on products
   for all using (
     exists (select 1 from businesses b where b.id = business_id and b.user_id = auth.uid())
@@ -100,6 +104,7 @@ create policy "Users manage their own products" on products
     exists (select 1 from businesses b where b.id = business_id and b.user_id = auth.uid())
   );
 
+drop policy if exists "Users manage their own analytics" on analytics;
 create policy "Users manage their own analytics" on analytics
   for all using (
     exists (select 1 from businesses b where b.id = business_id and b.user_id = auth.uid())
@@ -130,9 +135,55 @@ create unique index if not exists idx_social_accounts_phyllo_user on social_acco
 
 alter table social_accounts enable row level security;
 
+drop policy if exists "Users manage their own social accounts" on social_accounts;
 create policy "Users manage their own social accounts" on social_accounts
   for all using (auth.uid() = marketra_user_id) with check (auth.uid() = marketra_user_id);
 
 -- Note: this table is written to only by the backend (service role, which
 -- bypasses RLS) — the webhook and token-generation endpoints are the only
 -- writers. The policy above governs the frontend's read access only.
+
+-- ---------- Data integrity constraints ----------
+-- Added via ALTER TABLE (not the CREATE TABLE blocks above) so this is
+-- safe to re-run even though the tables already exist — each is wrapped
+-- to skip quietly if the constraint is already present.
+
+do $$ begin
+  alter table businesses add constraint businesses_budget_non_negative
+    check (monthly_marketing_budget is null or monthly_marketing_budget >= 0);
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  alter table businesses add constraint businesses_name_not_blank
+    check (length(trim(business_name)) > 0);
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  alter table social_accounts add constraint social_accounts_status_valid
+    check (connection_status in ('pending', 'connected', 'failed', 'disconnected'));
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  alter table chat_sessions add constraint chat_sessions_title_length
+    check (length(title) <= 200);
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  alter table conversations add constraint conversations_message_length
+    check (user_message is null or length(user_message) <= 4000);
+exception when duplicate_object then null;
+end $$;
+
+-- ---------- Webhook idempotency ----------
+-- InsightIQ/Phyllo webhooks are at-least-once delivery — the same event
+-- can arrive more than once. This table lets the webhook handler skip
+-- an event it has already processed.
+
+create table if not exists webhook_events (
+  event_id text primary key,
+  received_at timestamptz default now()
+);
