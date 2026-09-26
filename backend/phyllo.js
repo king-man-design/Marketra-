@@ -1,6 +1,6 @@
 const { createClient } = require("@supabase/supabase-js");
 
-const PHYLLO_BASE_URL = process.env.PHYLLO_BASE_URL || "https://api.sandbox.getphyllo.com";
+const PHYLLO_BASE_URL = process.env.PHYLLO_BASE_URL || "https://api.sandbox.insightiq.ai/v1";
 const CLIENT_ID = process.env.PHYLLO_CLIENT_ID;
 const CLIENT_SECRET = process.env.PHYLLO_CLIENT_SECRET;
 
@@ -10,10 +10,10 @@ const supabase =
     : null;
 
 function authHeader() {
-  // Phyllo's docs, last time this pattern was common, used HTTP Basic
-  // auth with client_id:client_secret. CONFIRM this against their
-  // current Authentication page before relying on it — if they've
-  // moved to a bearer-token/OAuth flow this needs to change.
+  // ⚠️ STILL UNCONFIRMED: the base URL and endpoint paths below have been
+  // verified against InsightIQ's docs, but the authentication MECHANISM
+  // itself (HTTP Basic with client_id:client_secret) has not — confirm
+  // this against their current Authentication page before relying on it.
   const basic = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString("base64");
   return { Authorization: `Basic ${basic}`, "Content-Type": "application/json" };
 }
@@ -23,9 +23,9 @@ function authHeader() {
  * Uses the Marketra user's own stable ID as the external identifier,
  * never a social handle. Stores the mapping in social_accounts.
  *
- * ⚠️ CONFIRM against Phyllo's current "Create User" docs: exact path,
- * whether it's POST /v1/users, required body fields (they've used
- * `name` + `external_id` historically — verify current field names).
+ * Path confirmed as {PHYLLO_BASE_URL}/users. ⚠️ STILL UNCONFIRMED: the
+ * exact request body field names (`name` + `external_id` is a guess) and
+ * the response shape (assumed to have a plain `.id` field below).
  */
 async function getOrCreatePhylloUser(marketraUserId) {
   if (!supabase) throw new Error("Supabase is not configured.");
@@ -39,7 +39,6 @@ async function getOrCreatePhylloUser(marketraUserId) {
 
   if (existing?.phyllo_user_id) return existing.phyllo_user_id;
 
-  // --- CONFIRM THIS CALL against current Phyllo docs ---
   const res = await fetch(`${PHYLLO_BASE_URL}/users`, {
     method: "POST",
     headers: authHeader(),
@@ -61,12 +60,11 @@ async function getOrCreatePhylloUser(marketraUserId) {
  * Requests an SDK token for this user, used by the frontend Connect
  * widget. Never returns anything but the token itself to the caller.
  *
- * ⚠️ CONFIRM against Phyllo's current "SDK Token" docs: exact path
- * (historically POST /v1/sdk-tokens), required body (user_id, products
- * array, etc.), and current supported "products"/scopes list.
+ * Path confirmed as {PHYLLO_BASE_URL}/sdk-tokens. ⚠️ STILL UNCONFIRMED:
+ * the required body's `products` array values ("IDENTITY"/"ENGAGEMENT"
+ * are guesses) and the response field name for the token itself.
  */
 async function createSdkToken(phylloUserId) {
-  // --- CONFIRM THIS CALL against current Phyllo docs ---
   const res = await fetch(`${PHYLLO_BASE_URL}/sdk-tokens`, {
     method: "POST",
     headers: authHeader(),
@@ -85,8 +83,9 @@ async function createSdkToken(phylloUserId) {
 /**
  * Fetches normalized profile/analytics data for a connected account.
  *
- * ⚠️ CONFIRM the exact endpoint and field names — this is a best-effort
- * shape based on common patterns, not a verified current Phyllo response.
+ * Path confirmed as {PHYLLO_BASE_URL}/profiles/{accountId}. ⚠️ STILL
+ * UNCONFIRMED: the response field names below (work_platform, reputation,
+ * etc.) are a best-effort guess at a common shape, not verified.
  */
 async function getProfileAnalytics(phylloAccountId) {
   const res = await fetch(`${PHYLLO_BASE_URL}/profiles/${phylloAccountId}`, {

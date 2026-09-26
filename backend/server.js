@@ -1,13 +1,31 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 const path = require("path");
 const marketingRoutes = require("./routes/marketing");
 const phylloRoutes = require("./routes/phyllo");
 
 const app = express();
 
-app.use(cors({ origin: process.env.CORS_ORIGIN || "*" }));
+// CSP is disabled here because this server is primarily a JSON API —
+// the real frontend is hosted separately on Netlify. Helmet's other
+// headers (X-Content-Type-Options, X-Frame-Options, HSTS, etc.) still
+// apply. If you start relying on this server's own static-file fallback
+// in production, revisit this and configure a real CSP instead of off.
+app.use(helmet({ contentSecurityPolicy: false }));
+
+// Fail toward a known-safe default instead of wide-open "*" if
+// CORS_ORIGIN was never set on Render — this app's own Netlify URL,
+// rather than every origin on the internet.
+const corsOrigin = process.env.CORS_ORIGIN;
+if (!corsOrigin) {
+  console.warn(
+    "[server] CORS_ORIGIN is not set — falling back to a hardcoded default. " +
+    "Set CORS_ORIGIN in Render's environment variables to your real frontend URL."
+  );
+}
+app.use(cors({ origin: corsOrigin || "https://marketraai.netlify.app" }));
 
 app.use(
   "/api/phyllo/webhook",

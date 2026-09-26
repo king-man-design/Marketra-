@@ -23,11 +23,13 @@ async function requireAuth(req, res, next) {
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
     if (!token) {
+      console.warn(`[auth] missing token on ${req.method} ${req.originalUrl} from ${req.ip}`);
       return res.status(401).json({ error: "Missing Authorization header." });
     }
 
     const { data, error } = await supabaseAuth.auth.getUser(token);
     if (error || !data?.user) {
+      console.warn(`[auth] invalid/expired token on ${req.method} ${req.originalUrl} from ${req.ip}`);
       return res.status(401).json({ error: "Invalid or expired session." });
     }
 
