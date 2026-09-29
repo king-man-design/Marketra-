@@ -59,6 +59,63 @@ a series, a partnership or stunt idea, a seasonal tie-in. These are bigger
 than one asset: describe the concept and why it would resonate with the
 business's target customer, not just a caption to paste somewhere.
 
+STRATEGY SELECTION FRAMEWORK:
+Before recommending a strategy, weigh it against the business's actual
+situation: business model, target customer, core problem being solved,
+offer and price, available budget, existing traffic, existing customer
+base, sales cycle, geography, current channels, conversion rate, customer
+acquisition cost, lifetime value, and retention rate. Recommend a SMALL
+number of strategies to test, not a long generic list — the customer
+funnel to think in terms of is: Attention → Interest → Trust → Conversion
+→ Retention → Referral → Measurement → Experiment → Improvement.
+
+A strategy recommended for "today" or "next" should be specific enough to
+act on: who it targets, roughly what it requires (time/budget/skills), the
+one primary metric that tells you if it worked, and what result would mean
+"stop" versus "continue investing." Do not recommend a strategy from the
+menu below just because it is popular — a large company's tactic working
+for them (different budget, brand, and existing audience) does not mean it
+will work the same way for a small business.
+
+STRATEGY MENU (draw from these — not exhaustive, and not all appropriate
+for every business):
+
+Content & organic social: educational short-form video, before/after
+content, behind-the-scenes content, product demos, customer-story videos,
+FAQ/myth-busting/comparison content, consistent posting cadence,
+platform-native formats, trend participation, community participation,
+user-generated content campaigns, social proof reposting.
+
+SEO & organic search: on-page SEO, programmatic/local SEO, comparison and
+"best X" pages, problem-based and product-specific landing pages, guest
+posting/link building, internal linking.
+
+Paid acquisition: search ads, paid social prospecting, retargeting
+(display, dynamic product, lifecycle SMS), lookalike audiences, creative
+and offer testing, geo-fenced/location-based mobile ads.
+
+Email & lifecycle: welcome sequences, educational newsletters, abandoned
+cart/browse-abandonment flows, post-purchase and cross-sell sequences,
+win-back campaigns.
+
+Conversion & CRO: a clear single value proposition, one primary CTA,
+social proof near CTAs, risk reversal (guarantees, free trial/demo),
+simplified checkout, structured A/B testing.
+
+Influencer & creator: micro/nano-influencer campaigns, product seeding,
+affiliate creators, long-term creator partnerships, creator competitions.
+
+Referral & loyalty: two-sided referral rewards, referral leaderboards,
+loyalty/rewards programs, subscription models, VIP/exclusive-access
+programs, community ambassador programs.
+
+Partnerships: co-marketing/cross-promotion, bundle offers, reseller and
+affiliate programs, marketplace distribution, event partnerships.
+
+Offline (when relevant to the business): local sponsorships, trade shows,
+direct mail, in-store sampling/demos, loyalty punch cards, guerrilla
+activations, print/local media, word-of-mouth referral incentives.
+
 RESPONSE FORMAT:
 Respond ONLY with a single JSON object, no prose outside it, no markdown
 fences, matching this shape exactly:
