@@ -273,8 +273,8 @@ async function loadConnectedAccounts() {
       .map(
         (a) => `
         <div class="session-item">
-          <span class="s-title">${a.platform || "Account"} ${a.handle ? "· @" + a.handle : ""}</span>
-          <span class="s-date">${a.connection_status}</span>
+          <span class="s-title">${escapeHtml(a.platform) || "Account"} ${a.handle ? "· @" + escapeHtml(a.handle) : ""}</span>
+          <span class="s-date">${escapeHtml(a.connection_status)}</span>
         </div>`
       )
       .join("");
@@ -291,8 +291,8 @@ function renderSessionList(container, sessions) {
   container.innerHTML = sessions
     .map(
       (s) => `
-      <div class="session-item" data-session-id="${s.id}" data-title="${s.title}">
-        <span class="s-title">${s.title}</span>
+      <div class="session-item" data-session-id="${s.id}" data-title="${escapeHtml(s.title)}">
+        <span class="s-title">${escapeHtml(s.title)}</span>
         <span class="s-date">${new Date(s.created_at).toLocaleDateString()}</span>
       </div>`
     )
@@ -359,6 +359,15 @@ function addEntry(role, text) {
   return el;
 }
 
+// Every value here can ultimately trace back to something a user typed
+// (business profile fields feed the AI prompt, and the AI can echo them
+// back) — always escape before inserting via innerHTML.
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str ?? "";
+  return div.innerHTML;
+}
+
 function renderPlan(plan) {
   if (!plan || plan._parse_error) {
     planEl.hidden = true;
@@ -367,22 +376,22 @@ function renderPlan(plan) {
   planEl.hidden = false;
   const list = (arr, ordered) => {
     const tag = ordered ? "ol" : "ul";
-    return `<${tag}>${(arr || []).map((i) => `<li>${i}</li>`).join("")}</${tag}>`;
+    return `<${tag}>${(arr || []).map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</${tag}>`;
   };
 
   let html = `
-    <h3>${plan.priority?.title || "Strategy Directive"}</h3>
-    <p style="color:var(--ink-secondary);">${plan.priority?.reason || ""}</p>
+    <h3>${escapeHtml(plan.priority?.title) || "Strategy Directive"}</h3>
+    <p style="color:var(--ink-secondary);">${escapeHtml(plan.priority?.reason)}</p>
     <div class="block"><h4>Do Today</h4>${list(plan.today, true)}</div>
     <div class="block"><h4>Next Steps</h4>${list(plan.next, true)}</div>
   `;
   if (plan.assets && Object.keys(plan.assets).length) {
     html += `<div class="block"><h4>Assets</h4>` +
-      Object.entries(plan.assets).map(([k, v]) => `<p><b>${k}:</b> ${v}</p>`).join("") + `</div>`;
+      Object.entries(plan.assets).map(([k, v]) => `<p><b>${escapeHtml(k)}:</b> ${escapeHtml(v)}</p>`).join("") + `</div>`;
   }
   if (plan.creative_ideas && plan.creative_ideas.length) {
     html += `<div class="block"><h4>Creative Ideas</h4>` +
-      plan.creative_ideas.map((i) => `<p><b>${i.concept}</b><br><span style="color:var(--ink-secondary);">${i.why_it_works}</span></p>`).join("") +
+      plan.creative_ideas.map((i) => `<p><b>${escapeHtml(i.concept)}</b><br><span style="color:var(--ink-secondary);">${escapeHtml(i.why_it_works)}</span></p>`).join("") +
       `</div>`;
   }
   if (plan.metrics && plan.metrics.length) {
