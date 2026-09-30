@@ -7,7 +7,7 @@ const marketingRoutes = require("./routes/marketing");
 const phylloRoutes = require("./routes/phyllo");
 
 const app = express();
-app.set("trust proxy", 1);
+app.set("trust proxy", 3);
 
 // CSP is disabled here because this server is primarily a JSON API —
 // the real frontend is hosted separately on Netlify. Helmet's other
@@ -49,6 +49,7 @@ app.get("/api/debug-ip", (req, res) =>
     ip: req.ip,
     ips: req.ips,
     xff: req.headers["x-forwarded-for"] || null,
+    cfConnectingIp: req.headers["cf-connecting-ip"] || null,
   })
 );
 
