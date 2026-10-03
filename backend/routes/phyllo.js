@@ -37,12 +37,13 @@ router.post("/token", connectLimiter, requireAuth, async (req, res) => {
     const phylloUserId = await getOrCreatePhylloUser(req.userId);
 
     if (supabase) {
-      await supabase
+      const { error: accountError } = await supabase
         .from("social_accounts")
         .upsert(
           { marketra_user_id: req.userId, phyllo_user_id: phylloUserId, connection_status: "pending" },
           { onConflict: "phyllo_user_id" }
         );
+      if (accountError) throw accountError;
     }
 
     const sdkToken = await createSdkToken(phylloUserId);
@@ -116,8 +117,13 @@ router.post("/webhook", webhookLimiter, async (req, res) => {
     }
 
     // Idempotency: InsightIQ/Phyllo webhooks are at-least-once delivery,
-    // so the same event can arrive more than once. Skip if we've already
-    // processed this exact event id.
+    // so the same event can arrive more than once. Order matters here —
+    // we CHECK for a prior successful processing first (read-only), do
+    // the actual work, and only mark the event as processed AFTER it
+    // succeeds. Marking it processed before processing (the previous
+    // bug) meant a failed event could never be retried: the row would
+    // already exist, so a retry would be silently treated as a duplicate
+    // and dropped instead of reprocessed.
     //
     // ⚠️ CONFIRM the actual field name InsightIQ uses for a unique event
     // identifier — assumed here as event.id, falling back to event.event_id.
@@ -128,17 +134,14 @@ router.post("/webhook", webhookLimiter, async (req, res) => {
     }
 
     if (supabase) {
-      const { error: insertError } = await supabase
+      const { data: already } = await supabase
         .from("webhook_events")
-        .insert({ event_id: eventId });
-      if (insertError) {
-        // Only a Postgres duplicate-key error (23505) means "already
-        // processed" — any other database failure must not be swallowed.
-        if (insertError.code === "23505") {
-          console.log(`[phyllo webhook] duplicate event ${eventId}, skipping`);
-          return res.status(200).json({ received: true, duplicate: true });
-        }
-        throw insertError;
+        .select("event_id")
+        .eq("event_id", eventId)
+        .maybeSingle();
+      if (already) {
+        console.log(`[phyllo webhook] duplicate event ${eventId}, skipping`);
+        return res.status(200).json({ received: true, duplicate: true });
       }
     }
 
@@ -146,16 +149,44 @@ router.post("/webhook", webhookLimiter, async (req, res) => {
     const phylloAccountId = event?.data?.account_id;
     const eventType = event?.event_type || event?.type;
 
+    if (!supabase) {
+      console.error("[phyllo webhook] Supabase is not configured; refusing to acknowledge event");
+      return res.status(503).json({ error: "Webhook processing is not configured." });
+    }
+
+    const supportedEvent = eventType === "PROFILES.ADDED" || eventType === "PROFILES.UPDATED";
+
+    // We can safely acknowledge event types MARKETRA does not currently
+    // process, but only after recording their event ID. This prevents
+    // endless provider retries while making it explicit that the event was
+    // intentionally ignored rather than silently failing validation.
+    if (!supportedEvent) {
+      const { error: ignoredError } = await supabase
+        .from("webhook_events")
+        .insert({ event_id: eventId });
+      if (ignoredError && ignoredError.code !== "23505") throw ignoredError;
+      return res.status(200).json({ received: true, ignored: true });
+    }
+
+    // Supported profile events must contain the identifiers needed to apply
+    // the update. Returning non-2xx keeps malformed events retryable instead
+    // of permanently acknowledging data MARKETRA could not process.
+    if (!phylloUserId || typeof phylloUserId !== "string" || !phylloAccountId || typeof phylloAccountId !== "string") {
+      console.error("[phyllo webhook] supported event is missing user/account identifiers");
+      return res.status(400).json({ error: "Incomplete webhook event." });
+    }
+
     // phylloUserId only ever gets matched against rows WE created via
     // getOrCreatePhylloUser — a webhook can't invent a new mapping, only
     // update one that already exists, so this can't be used to attach
     // data to an arbitrary account.
-    if (!phylloUserId || typeof phylloUserId !== "string" || !supabase) {
-      return res.status(200).json({ received: true });
-    }
 
-    if (eventType === "PROFILES.ADDED" || eventType === "PROFILES.UPDATED") {
-      await supabase
+    // --- Processing happens here, BEFORE marking the event processed. ---
+    // If this throws, we fall into the catch block below, return a
+    // non-2xx response, and — critically — never reach the webhook_events
+    // insert, so InsightIQ's retry will be handled as a fresh attempt.
+    if (supportedEvent) {
+      const { error: updateError } = await supabase
         .from("social_accounts")
         .update({
           phyllo_account_id: phylloAccountId || null,
@@ -164,12 +195,37 @@ router.post("/webhook", webhookLimiter, async (req, res) => {
           updated_at: new Date().toISOString(),
         })
         .eq("phyllo_user_id", phylloUserId);
+      if (updateError) throw updateError;
+    }
+
+    // Only reaching here means processing succeeded — now, and only now,
+    // record the event as done. A unique-constraint failure here (23505)
+    // means a concurrent duplicate delivery recorded it microseconds
+    // ago; since both would have applied the same idempotent update
+    // above, that's harmless and not an error worth surfacing.
+    //
+    // Note: there is no multi-statement database transaction tying the
+    // update above and this insert together — supabase-js's REST client
+    // doesn't expose one without a custom Postgres function (RPC), which
+    // wasn't introduced here to keep this change small. The small window
+    // between a successful update and this insert is an accepted
+    // limitation: a crash in that exact window would cause one
+    // harmless reprocessing on retry (the update is idempotent), not
+    // data corruption or a permanently stuck event.
+    if (supabase) {
+      const { error: markError } = await supabase.from("webhook_events").insert({ event_id: eventId });
+      if (markError && markError.code !== "23505") {
+        console.error("[phyllo webhook] failed to record processed event (processing itself succeeded):", markError.message);
+      }
     }
 
     res.status(200).json({ received: true });
   } catch (err) {
-    console.error("[/api/phyllo/webhook]", err.message);
-    res.status(400).json({ error: "Could not process webhook." });
+    // Processing failed — the event was deliberately NOT marked as
+    // processed above, so InsightIQ's retry will be handled as a new
+    // attempt, not silently dropped as a duplicate.
+    console.error("[/api/phyllo/webhook] processing failed, event not marked processed:", err.message);
+    res.status(500).json({ error: "Could not process webhook." });
   }
 });
 

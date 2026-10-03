@@ -3,6 +3,7 @@ const rateLimit = require("express-rate-limit");
 const { createClient } = require("@supabase/supabase-js");
 const { askMarketra } = require("../ai");
 const { getBusiness, getRecentHistory, saveTurn } = require("../business");
+const { getProfileAnalytics } = require("../phyllo");
 const { requireAuth } = require("../authMiddleware");
 const { isValidUuid, isValidMessage } = require("../validate");
 
@@ -78,7 +79,61 @@ router.post("/marketing", marketingLimiter, requireAuth, async (req, res) => {
     const business = resolvedBusinessId ? await getBusiness(resolvedBusinessId) : null;
     const history = sessionId ? await getRecentHistory(sessionId) : [];
 
-    const result = await askMarketra({ business, history, message });
+    // Pull real connected-account analytics, if any exist, so recommendations
+    // can be grounded in actual social data rather than the business
+    // profile alone. This never fabricates anything: if there's no
+    // connected account, or the Phyllo call fails, socialData stays null
+    // and the AI is told explicitly that no social data is available —
+    // it does not silently fall back to guessing.
+    let outcomes = null;
+    if (supabase) {
+      try {
+        const { data: recentOutcomes } = await supabase
+          .from("recommendation_outcomes")
+          .select("metric_name, metric_value, result_summary, recorded_at")
+          .eq("business_id", resolvedBusinessId)
+          .order("recorded_at", { ascending: false })
+          .limit(10);
+        if (recentOutcomes && recentOutcomes.length) outcomes = recentOutcomes;
+      } catch (err) {
+        console.warn("[marketing] could not load recommendation outcomes:", err.message);
+      }
+    }
+
+    let socialData = null;
+    if (supabase) {
+      try {
+        const { data: accounts } = await supabase
+          .from("social_accounts")
+          .select("platform, handle, phyllo_account_id")
+          .eq("marketra_user_id", req.userId)
+          .eq("connection_status", "connected")
+          .not("phyllo_account_id", "is", null);
+
+        if (accounts && accounts.length) {
+          const fetched = await Promise.all(
+            accounts.map(async (acc) => {
+              try {
+                const analytics = await getProfileAnalytics(acc.phyllo_account_id);
+                return { handle: acc.handle, ...analytics };
+              } catch (err) {
+                // A single failed Phyllo call must not break the whole
+                // request — log it, drop that one account's data, and
+                // continue with whatever did succeed (possibly none).
+                console.warn(`[marketing] Phyllo analytics fetch failed for account ${acc.phyllo_account_id}:`, err.message);
+                return null;
+              }
+            })
+          );
+          const successful = fetched.filter(Boolean);
+          if (successful.length) socialData = successful;
+        }
+      } catch (err) {
+        console.warn("[marketing] could not check connected social accounts:", err.message);
+      }
+    }
+
+    const result = await askMarketra({ business, history, message, socialData, outcomes });
 
     if (result._rate_limited) {
       return res.status(429).json({
@@ -88,6 +143,38 @@ router.post("/marketing", marketingLimiter, requireAuth, async (req, res) => {
     }
 
     if (sessionId) await saveTurn(sessionId, resolvedBusinessId, message, result);
+
+    // If the AI returned dashboard-style recommendations for this turn,
+    // persist them so the Dashboard doesn't need to re-call the AI on
+    // every page load — only on explicit refresh or first use. This
+    // reuses the same /api/marketing endpoint rather than adding a new
+    // one; whether a turn produced recommendations is simply up to the
+    // AI's own judgment of the request, per the system prompt.
+    if (Array.isArray(result.recommendations) && result.recommendations.length && resolvedBusinessId && supabase) {
+      const validPriorities = new Set(["HIGH", "MEDIUM", "OPPORTUNITY"]);
+      const validExecutionOptions = new Set(["generate_content", "create_campaign", "generate_post", "view_strategy"]);
+      const rows = result.recommendations
+        .filter((r) => r && validPriorities.has(r.priority) && r.problem && r.recommended_action)
+        .slice(0, 3)
+        .map((r) => ({
+          business_id: resolvedBusinessId,
+          priority: r.priority,
+          problem: String(r.problem).slice(0, 2000),
+          evidence: r.evidence ? String(r.evidence).slice(0, 2000) : null,
+          recommended_action: String(r.recommended_action).slice(0, 2000),
+          expected_goal: r.expected_goal ? String(r.expected_goal).slice(0, 2000) : null,
+          execution_options: Array.isArray(r.execution_options)
+            ? r.execution_options.filter((o) => validExecutionOptions.has(o))
+            : [],
+        }));
+
+      if (rows.length) {
+        // Replace the open set rather than accumulating forever — this is
+        // "today's priorities," not a growing backlog.
+        await supabase.from("marketing_recommendations").delete().eq("business_id", resolvedBusinessId).eq("status", "open");
+        await supabase.from("marketing_recommendations").insert(rows);
+      }
+    }
 
     res.json(result);
   } catch (err) {
