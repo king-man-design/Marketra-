@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>MARKETRA</title>
+  <meta name="theme-color" content="#080D1C">
+  <title>MARKETRA AI</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <!-- ⚠️ CONFIRM this against Phyllo's current Connect SDK docs — placeholder URL -->
   <script src="https://cdn.getphyllo.com/connect/v2/phyllo-connect.js"></script>
 </head>
 <body>
@@ -16,112 +16,225 @@
 
   <!-- AUTH -->
   <section id="authView" class="view auth-view">
-    <div class="auth-card">
-      <h1>MARKETRA</h1>
-      <p class="subtitle" id="authSubtitle">Log in to your account</p>
-      <form id="authForm">
-        <input id="authEmail" type="email" placeholder="Email" required>
-        <input id="authPassword" type="password" placeholder="Password" required minlength="6">
-        <button type="submit" id="authSubmitBtn">Log In</button>
-      </form>
-      <p class="auth-toggle">
-        <span id="authToggleText">Don't have an account?</span>
-        <button type="button" id="authToggleBtn">Sign up</button>
-      </p>
-      <p class="auth-error" id="authError"></p>
+    <div class="auth-shell">
+      <div class="brand-lockup brand-lockup-auth">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div><strong>MARKETRA</strong><em>AI</em></div>
+      </div>
+      <div class="auth-card">
+        <div class="eyebrow">MARKETING OPERATING SYSTEM</div>
+        <h1>Turn business data into your next move.</h1>
+        <p class="subtitle" id="authSubtitle">Log in to your account</p>
+        <form id="authForm">
+          <label>Email<input id="authEmail" type="email" placeholder="you@business.com" autocomplete="email" required></label>
+          <label>Password<input id="authPassword" type="password" placeholder="••••••••" autocomplete="current-password" required minlength="6"></label>
+          <button class="primary-btn auth-submit" type="submit" id="authSubmitBtn">Log In</button>
+        </form>
+        <p class="auth-toggle"><span id="authToggleText">Don't have an account?</span> <button type="button" id="authToggleBtn">Sign up</button></p>
+        <p class="auth-error" id="authError"></p>
+      </div>
     </div>
+    <div class="auth-glow auth-glow-one"></div><div class="auth-glow auth-glow-two"></div>
   </section>
 
-  <!-- ONBOARDING (first business profile) -->
+  <!-- ONBOARDING -->
   <section id="onboardingView" class="view auth-view" hidden>
-    <div class="auth-card">
-      <h1>Tell us about your business</h1>
-      <form id="onboardingForm">
-        <input name="business_name" placeholder="Business name" required>
-        <input name="industry" placeholder="Industry">
-        <input name="target_customer" placeholder="Target customer">
-        <input name="monthly_marketing_budget" type="number" placeholder="Monthly Budget (₹)">
-        <input name="current_goal" placeholder="Current goal">
-        <button type="submit">Create Profile</button>
-      </form>
-      <p class="auth-error" id="onboardingError"></p>
+    <div class="auth-shell compact-auth">
+      <div class="brand-lockup brand-lockup-auth">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div><strong>MARKETRA</strong><em>AI</em></div>
+      </div>
+      <div class="auth-card">
+        <div class="eyebrow">ONE-TIME SETUP</div>
+        <h1>Tell Marketra about your business.</h1>
+        <p class="subtitle">A little context gives the marketing engine something useful to work with.</p>
+        <form id="onboardingForm">
+          <label>Business name<input name="business_name" placeholder="Your business" required></label>
+          <label>Industry<input name="industry" placeholder="e.g. Fashion, SaaS, Restaurant"></label>
+          <label>What do you sell?<textarea name="description" rows="2" placeholder="Products or services, offer, and what makes you different"></textarea></label>
+          <label>Target customer<input name="target_customer" placeholder="Who do you want to reach?"></label>
+          <label>Where do you sell?<input name="location" placeholder="City, region, online, or service area"></label>
+          <label>Current marketing channels<input name="sales_channels" placeholder="Instagram, WhatsApp, website, store..."></label>
+          <label>Monthly marketing budget<input name="monthly_marketing_budget" type="number" placeholder="₹ 0"></label>
+          <label>Current goal<input name="current_goal" placeholder="e.g. Get more qualified leads"></label>
+          <button class="primary-btn" type="submit">Create Business Profile</button>
+        </form>
+        <p class="auth-error" id="onboardingError"></p>
+      </div>
     </div>
   </section>
 
   <!-- MAIN APP -->
   <div id="appShell" hidden>
-    <header class="app-topbar">
-      <span class="app-title" id="topBusinessName">MARKETRA</span>
-      <span class="status-dot" id="statusDot"></span>
-    </header>
-
-    <main class="app-main">
-      <!-- DASHBOARD -->
-      <section id="dashboardView" class="app-view">
-        <h2>Dashboard</h2>
-        <div class="stat-card">
-          <p class="stat-label">Business</p>
-          <p class="stat-value" id="dashBusinessName">—</p>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-top">
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div><strong>MARKETRA</strong><em>AI</em></div>
         </div>
-        <div class="stat-row">
-          <div class="stat-card small">
-            <p class="stat-label">Monthly Budget</p>
-            <p class="stat-value" id="dashBudget">₹—</p>
-          </div>
-          <div class="stat-card small">
-            <p class="stat-label">Goal</p>
-            <p class="stat-value" id="dashGoal">—</p>
-          </div>
+        <button class="mobile-close" id="mobileCloseBtn" aria-label="Close navigation">×</button>
+      </div>
+
+      <div class="sidebar-label">WORKSPACE</div>
+      <nav class="side-nav">
+        <button class="side-nav-btn active" data-view="dashboard"><span class="nav-icon">⌂</span><span>Dashboard</span></button>
+        <button class="side-nav-btn" data-view="chat"><span class="nav-icon">✦</span><span>AI Assistant</span></button>
+        <button class="side-nav-btn" data-view="history"><span class="nav-icon">◷</span><span>Conversations</span></button>
+        <button class="side-nav-btn" data-view="settings"><span class="nav-icon">⚙</span><span>Settings</span></button>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="sidebar-tip">
+          <span class="tip-icon">✦</span>
+          <strong>Marketing, simplified.</strong>
+          <p>Marketra turns your data into prioritized actions.</p>
         </div>
-        <button id="newChatFromDash" class="primary-btn">+ Start New Chat</button>
+        <div class="sidebar-status"><span id="statusDot"></span><span>System connected</span></div>
+      </div>
+    </aside>
 
-        <h3 class="section-heading">Connected Accounts</h3>
-        <button id="connectSocialBtn" class="primary-btn secondary-style">📱 Connect Social Account</button>
-        <p class="auth-error" id="connectStatus"></p>
-        <div id="connectedAccountsList" class="session-list"></div>
+    <div class="app-content">
+      <header class="app-topbar">
+        <div class="mobile-brand brand-lockup">
+          <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div><strong>MARKETRA</strong><em>AI</em></div>
+        </div>
+        <button class="mobile-menu" id="mobileMenuBtn" aria-label="Open navigation">☰</button>
+        <div class="topbar-search"><span>⌕</span><input aria-label="Search" placeholder="Search your marketing workspace"></div>
+        <div class="topbar-actions">
+          <button class="icon-btn" title="Notifications" aria-label="Notifications">♧<span class="notification-dot"></span></button>
+          <div class="user-chip"><div class="user-avatar">M</div><div><strong id="topBusinessName">MARKETRA</strong><span>Business workspace</span></div></div>
+        </div>
+      </header>
 
-        <h3 class="section-heading">Recent Chats</h3>
-        <div id="dashRecentList" class="session-list"></div>
-      </section>
+      <main class="app-main">
+        <!-- DASHBOARD -->
+        <section id="dashboardView" class="app-view dashboard-view">
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow">TODAY'S MARKETING COMMAND CENTER</div>
+              <h1 id="dashGreeting">Your marketing, at a glance.</h1>
+              <p>See what needs attention, why it matters, and what to do next.</p>
+            </div>
+            <button id="refreshPrioritiesBtn" class="primary-btn plan-btn"><span>✦</span> Generate Today's Plan</button>
+          </div>
+          <p class="auth-error" id="recoStatus"></p>
 
-      <!-- CHAT -->
-      <section id="chatView" class="app-view" hidden>
-        <div id="messages" class="feed"></div>
-        <div id="plan" class="plan-card" hidden></div>
-        <form id="composer" class="chat-composer">
-          <input id="prompt" autocomplete="off" placeholder="Enter Message">
-          <button class="send-btn" type="submit">↑</button>
-        </form>
-      </section>
+          <div class="metric-grid">
+            <article class="metric-card metric-score">
+              <div class="metric-top"><span>Marketing Score</span><span class="metric-icon">◎</span></div>
+              <div class="metric-value">—<small>/100</small></div>
+              <div class="metric-note">Connect social accounts to calculate your score.</div>
+              <div class="metric-bar"><span style="width:0%"></span></div>
+            </article>
+            <article class="metric-card">
+              <div class="metric-top"><span>Connected Accounts</span><span class="metric-icon">◉</span></div>
+              <div class="metric-value" id="connectedCount">0</div>
+              <div class="metric-note" id="connectedSummary">No social accounts connected</div>
+              <span class="metric-status">Waiting for connection</span>
+            </article>
+            <article class="metric-card">
+              <div class="metric-top"><span>Top Priorities</span><span class="metric-icon">✦</span></div>
+              <div class="metric-value" id="priorityCount">0</div>
+              <div class="metric-note">Open recommendations from Marketra.</div>
+              <span class="metric-status neutral">Ready when you are</span>
+            </article>
+            <article class="metric-card">
+              <div class="metric-top"><span>Business</span><span class="metric-icon">◇</span></div>
+              <div class="metric-value metric-business" id="dashBusinessName">—</div>
+              <div class="metric-note" id="dashGoal">—</div>
+              <span class="metric-status budget" id="dashBudget">Budget: ₹—</span>
+            </article>
+          </div>
 
-      <!-- HISTORY -->
-      <section id="historyView" class="app-view" hidden>
-        <h2>Chat History</h2>
-        <button id="newChatFromHistory" class="primary-btn">+ New Chat</button>
-        <div id="historyList" class="session-list"></div>
-      </section>
+          <div class="dashboard-grid">
+            <section class="panel priorities-panel">
+              <div class="today-action-banner" id="todayActionBanner" hidden>
+                <div><span class="panel-kicker">TODAY'S ACTION</span><h2 id="todayActionTitle">Your next move</h2><p id="todayActionText">Marketra will turn the top priority into a concrete task.</p></div>
+                <button type="button" id="todayActionBtn" class="primary-btn">Do It →</button>
+              </div>
+              <div class="panel-heading">
+                <div><span class="panel-kicker">AI PRIORITIES</span><h2>What needs attention</h2><p>Recommendations based on your business and available social data.</p></div>
+                <button id="askMarketraBtn" class="ghost-btn">Ask Marketra <span>→</span></button>
+              </div>
+              <div id="priorityActions" class="priority-list"></div>
+            </section>
 
-      <!-- SETTINGS -->
-      <section id="settingsView" class="app-view" hidden>
-        <h2>Settings</h2>
-        <form id="settingsForm">
-          <label>Business name<input name="business_name"></label>
-          <label>Industry<input name="industry"></label>
-          <label>Target customer<input name="target_customer"></label>
-          <label>Monthly Budget (₹)<input name="monthly_marketing_budget" type="number"></label>
-          <label>Current goal<input name="current_goal"></label>
-          <button type="submit">Save Changes</button>
-        </form>
-        <p class="auth-error" id="settingsStatus"></p>
-        <button id="signOutBtn" class="danger-btn">Sign Out</button>
-      </section>
-    </main>
+            <aside class="right-stack">
+              <section class="panel analytics-panel">
+                <div class="panel-heading compact"><div><span class="panel-kicker">PERFORMANCE</span><h2>Social analytics</h2></div><span class="live-pill">● Live</span></div>
+                <div class="chart-shell" id="analyticsChart">
+                  <div class="chart-grid-lines"><i></i><i></i><i></i><i></i></div>
+                  <div class="chart-placeholder"><span class="chart-placeholder-icon">⌁</span><strong>Analytics will appear here</strong><p>Connect a social account to populate your performance chart with real data.</p></div>
+                </div>
+                <div id="connectedAccountsList" class="connected-list"></div>
+                <button id="connectSocialBtn" class="secondary-btn full-btn">＋ Connect Social Account</button>
+                <p class="auth-error" id="connectStatus"></p>
+              </section>
 
-    <nav class="bottom-tabs">
-      <button class="tab-btn active" data-view="dashboard">🏠<span>Dashboard</span></button>
-      <button class="tab-btn" data-view="chat">💬<span>Chat</span></button>
-      <button class="tab-btn" data-view="history">🕘<span>History</span></button>
-      <button class="tab-btn" data-view="settings">⚙️<span>Settings</span></button>
+              <section class="panel business-panel">
+                <div class="panel-heading compact"><div><span class="panel-kicker">QUICK ACCESS</span><h2>Workspace</h2></div></div>
+                <div class="quick-grid">
+                  <button class="quick-action" id="newChatFromDash"><span>✦</span><strong>New AI Chat</strong><small>Get a strategy answer</small></button>
+                  <button class="quick-action" id="connectSocialShortcut"><span>◎</span><strong>Connect Social</strong><small>Bring in real data</small></button>
+                </div>
+              </section>
+            </aside>
+          </div>
+
+          <section class="panel measurement-panel">
+            <div class="panel-heading compact"><div><span class="panel-kicker">MEASURE & LEARN</span><h2>Recent outcomes</h2><p>Record what happened after you acted so Marketra can use the result in future decisions.</p></div></div>
+            <div id="outcomesList" class="outcomes-list"><p class="empty-note">No outcomes recorded yet. Complete an action, then record its result.</p></div>
+          </section>
+
+          <section class="panel recent-panel">
+            <div class="panel-heading compact"><div><span class="panel-kicker">RECENT ACTIVITY</span><h2>Conversations</h2></div><button class="ghost-btn" data-view-jump="history">View all →</button></div>
+            <div id="dashRecentList" class="session-list"></div>
+          </section>
+        </section>
+
+        <!-- CHAT -->
+        <section id="chatView" class="app-view chat-view" hidden>
+          <div class="chat-header"><div><span class="panel-kicker">MARKETRA AI</span><h1>AI Assistant</h1><p>Ask what to do next. Marketra will reason from your business context.</p></div><button class="secondary-btn" id="newChatFromHistory">＋ New Chat</button></div>
+          <div class="chat-workspace"><div id="messages" class="feed"></div><div id="plan" class="plan-card" hidden></div></div>
+          <form id="composer" class="chat-composer"><input id="prompt" autocomplete="off" placeholder="Ask Marketra about your next marketing move…"><button class="send-btn" type="submit">↑</button></form>
+        </section>
+
+        <!-- HISTORY -->
+        <section id="historyView" class="app-view standard-view" hidden>
+          <div class="page-heading"><div><div class="eyebrow">WORKSPACE MEMORY</div><h1>Conversations</h1><p>Your previous marketing discussions.</p></div><button id="newChatFromHistoryAlt" class="primary-btn">＋ New Chat</button></div>
+          <div id="historyList" class="session-list large-list"></div>
+        </section>
+
+        <!-- SETTINGS -->
+        <section id="settingsView" class="app-view standard-view" hidden>
+          <div class="page-heading"><div><div class="eyebrow">WORKSPACE SETTINGS</div><h1>Business profile</h1><p>Keep your context current so Marketra can make better recommendations.</p></div></div>
+          <div class="settings-grid">
+            <form id="settingsForm" class="panel settings-card">
+              <div class="panel-heading compact"><div><span class="panel-kicker">BUSINESS CONTEXT</span><h2>Your profile</h2></div></div>
+              <label>Business name<input name="business_name"></label>
+              <label>Industry<input name="industry"></label>
+              <label>What you sell<textarea name="description" rows="3"></textarea></label>
+              <label>Target customer<input name="target_customer"></label>
+              <label>Location / service area<input name="location"></label>
+              <label>Marketing channels<input name="sales_channels" placeholder="Instagram, WhatsApp, website..."></label>
+              <label>Monthly Budget (₹)<input name="monthly_marketing_budget" type="number"></label>
+              <label>Current goal<input name="current_goal"></label>
+              <button class="primary-btn" type="submit">Save Changes</button>
+              <p class="auth-error" id="settingsStatus"></p>
+            </form>
+            <div class="panel settings-info"><span class="panel-kicker">MARKETRA AI</span><h2>Built around your decisions.</h2><p>Marketra is designed to turn business signals into a short list of practical marketing actions instead of burying you under generic AI chat.</p><div class="info-list"><div><span>01</span><strong>Understand</strong><small>Business context and connected data</small></div><div><span>02</span><strong>Prioritize</strong><small>Focus on the actions that matter</small></div><div><span>03</span><strong>Execute</strong><small>Turn recommendations into useful outputs</small></div></div></div>
+          </div>
+          <button id="signOutBtn" class="danger-btn">Sign Out</button>
+        </section>
+      </main>
+    </div>
+
+    <nav class="mobile-tabs">
+      <button class="tab-btn active" data-view="dashboard"><span>⌂</span><small>Home</small></button>
+      <button class="tab-btn" data-view="chat"><span>✦</span><small>AI</small></button>
+      <button class="tab-btn" data-view="history"><span>◷</span><small>Chats</small></button>
+      <button class="tab-btn" data-view="settings"><span>⚙</span><small>Settings</small></button>
     </nav>
   </div>
 
