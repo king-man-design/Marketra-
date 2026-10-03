@@ -30,10 +30,23 @@ function getStatusCode(err) {
  * JSON matching the shape defined in marketing-system.txt, or a
  * _rate_limited flag the route can turn into a clean 429 response.
  */
-async function askMarketra({ business, history = [], message, allowWebSearch = false }) {
+async function askMarketra({ business, history = [], message, allowWebSearch = false, socialData = null, outcomes = null }) {
   const businessBlock = business
     ? `BUSINESS PROFILE:\n${JSON.stringify(business, null, 2)}`
     : "BUSINESS PROFILE: none provided yet — ask for the essentials before diagnosing.";
+
+  // Labeled explicitly so the model (and, via the "evidence" field, the
+  // end user) can always tell whether a number is real connected-account
+  // data or whether none exists — never blur the two.
+  const socialBlock =
+    socialData && socialData.length
+      ? `CONNECTED SOCIAL ACCOUNT DATA (REAL, from InsightIQ/Phyllo — use this, do not invent numbers beyond it):\n${JSON.stringify(socialData, null, 2)}`
+      : "CONNECTED SOCIAL ACCOUNT DATA: none available. Do not invent engagement, follower, reach, or performance numbers. Any recommendation must be labeled as profile-based or general, not based on social analytics.";
+
+  const outcomeBlock =
+    outcomes && outcomes.length
+      ? `RECENT MARKETING OUTCOMES (REAL, manually recorded results from prior actions — use as historical context, do not treat as platform analytics):\n${JSON.stringify(outcomes, null, 2)}`
+      : "RECENT MARKETING OUTCOMES: none recorded yet. Measurement is pending for executed recommendations.";
 
   // Gemini uses "model" instead of "assistant" for the AI's own turns.
   const contents = [
@@ -41,7 +54,7 @@ async function askMarketra({ business, history = [], message, allowWebSearch = f
       role: h.role === "assistant" ? "model" : "user",
       parts: [{ text: h.content }],
     })),
-    { role: "user", parts: [{ text: `${businessBlock}\n\nUSER MESSAGE:\n${message}` }] },
+    { role: "user", parts: [{ text: `${businessBlock}\n\n${socialBlock}\n\n${outcomeBlock}\n\nUSER MESSAGE:\n${message}` }] },
   ];
 
   const config = {

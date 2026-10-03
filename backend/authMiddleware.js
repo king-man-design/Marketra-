@@ -7,6 +7,20 @@ const supabaseAuth =
     ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY)
     : null;
 
+// Server-side-only detail for a failed token check. Never sent to the client.
+// The token is redacted from every string in case an error message echoes it.
+function describeAuthError(error, token) {
+  if (!error) return { reason: "no user returned" };
+  const redact = (value) =>
+    typeof value === "string" && token ? value.split(token).join("[redacted]") : value;
+  return {
+    name: redact(error.name),
+    status: error.status,
+    code: redact(error.code),
+    message: redact(error.message),
+  };
+}
+
 /**
  * Requires a valid Supabase session. Reads the Authorization: Bearer <token>
  * header, verifies it against Supabase's own servers (auth.getUser), and
@@ -18,7 +32,9 @@ const supabaseAuth =
 async function requireAuth(req, res, next) {
   try {
     if (!supabaseAuth) {
-      return res.status(500).json({ error: "Auth is not configured on the server." });
+      const missing = ["SUPABASE_URL", "SUPABASE_ANON_KEY"].filter((name) => !process.env[name]);
+      console.error(`[requireAuth] auth is not configured: missing environment variable(s): ${missing.join(", ")}`);
+      return res.status(500).json({ error: "Internal server error." });
     }
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
@@ -29,7 +45,9 @@ async function requireAuth(req, res, next) {
 
     const { data, error } = await supabaseAuth.auth.getUser(token);
     if (error || !data?.user) {
-      console.warn(`[auth] invalid/expired token on ${req.method} ${req.originalUrl} from ${req.ip}`);
+      console.warn(
+        `[auth] invalid/expired token on ${req.method} ${req.originalUrl} from ${req.ip} - ${JSON.stringify(describeAuthError(error, token))}`
+      );
       return res.status(401).json({ error: "Invalid or expired session." });
     }
 

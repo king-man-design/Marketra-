@@ -43,16 +43,6 @@ app.use("/api/phyllo", phylloRoutes);
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
-// TEMPORARY — delete once the trust-proxy value above is verified correct.
-app.get("/api/debug-ip", (req, res) =>
-  res.json({
-    ip: req.ip,
-    ips: req.ips,
-    xff: req.headers["x-forwarded-for"] || null,
-    cfConnectingIp: req.headers["cf-connecting-ip"] || null,
-  })
-);
-
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`MARKETRA backend running on http://localhost:${PORT}`);

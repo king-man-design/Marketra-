@@ -1,6 +1,6 @@
 const { createClient } = require("@supabase/supabase-js");
 
-const PHYLLO_BASE_URL = process.env.PHYLLO_BASE_URL || "https://api.sandbox.insightiq.ai/v1";
+const PHYLLO_BASE_URL = (process.env.PHYLLO_BASE_URL || "https://api.sandbox.insightiq.ai/v1").replace(/\/+$/, "");
 const CLIENT_ID = process.env.PHYLLO_CLIENT_ID;
 const CLIENT_SECRET = process.env.PHYLLO_CLIENT_SECRET;
 
@@ -10,10 +10,9 @@ const supabase =
     : null;
 
 function authHeader() {
-  // ⚠️ STILL UNCONFIRMED: the base URL and endpoint paths below have been
-  // verified against InsightIQ's docs, but the authentication MECHANISM
-  // itself (HTTP Basic with client_id:client_secret) has not — confirm
-  // this against their current Authentication page before relying on it.
+  if (!CLIENT_ID || !CLIENT_SECRET) {
+    throw new Error("InsightIQ credentials are not configured.");
+  }
   const basic = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString("base64");
   return { Authorization: `Basic ${basic}`, "Content-Type": "application/json" };
 }
@@ -30,13 +29,14 @@ function authHeader() {
 async function getOrCreatePhylloUser(marketraUserId) {
   if (!supabase) throw new Error("Supabase is not configured.");
 
-  const { data: existing } = await supabase
+  const { data: existing, error: lookupError } = await supabase
     .from("social_accounts")
     .select("phyllo_user_id")
     .eq("marketra_user_id", marketraUserId)
     .limit(1)
     .maybeSingle();
 
+  if (lookupError) throw lookupError;
   if (existing?.phyllo_user_id) return existing.phyllo_user_id;
 
   const res = await fetch(`${PHYLLO_BASE_URL}/users`, {
@@ -48,7 +48,8 @@ async function getOrCreatePhylloUser(marketraUserId) {
     }),
   });
   if (!res.ok) {
-    throw new Error(`Phyllo create-user failed: ${res.status} ${await res.text()}`);
+    const detail = (await res.text()).slice(0, 500);
+    throw new Error(`InsightIQ create-user failed: ${res.status} ${detail}`);
   }
   const user = await res.json();
   // Expecting something like { id: "phyllo-user-uuid", ... } — confirm
@@ -74,7 +75,8 @@ async function createSdkToken(phylloUserId) {
     }),
   });
   if (!res.ok) {
-    throw new Error(`Phyllo sdk-token failed: ${res.status} ${await res.text()}`);
+    const detail = (await res.text()).slice(0, 500);
+    throw new Error(`InsightIQ sdk-token failed: ${res.status} ${detail}`);
   }
   const data = await res.json();
   return data.sdk_token; // confirm actual field name
@@ -92,7 +94,8 @@ async function getProfileAnalytics(phylloAccountId) {
     headers: authHeader(),
   });
   if (!res.ok) {
-    throw new Error(`Phyllo profile fetch failed: ${res.status} ${await res.text()}`);
+    const detail = (await res.text()).slice(0, 500);
+    throw new Error(`InsightIQ profile fetch failed: ${res.status} ${detail}`);
   }
   const raw = await res.json();
 
