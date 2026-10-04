@@ -24,11 +24,10 @@ function getStatusCode(err) {
 
 /**
  * Calls Gemini with the marketing system prompt + business memory +
- * conversation history + the new user message. Retries once on a 429
- * (rate limit) after a short delay — this recovers per-minute (RPM)
- * limits, though not an exhausted daily (RPD) quota. Returns parsed
- * JSON matching the shape defined in marketing-system.txt, or a
- * _rate_limited flag the route can turn into a clean 429 response.
+ * conversation history + the new user message. Retries transient Gemini failures (429/5xx) with bounded exponential
+ * backoff. Returns parsed JSON matching the shape defined in
+ * marketing-system.txt, or a clean internal flag the route can turn into
+ * an appropriate HTTP response.
  */
 async function askMarketra({ business, history = [], message, allowWebSearch = false, socialData = null, outcomes = null }) {
   const businessBlock = business
@@ -66,33 +65,51 @@ async function askMarketra({ business, history = [], message, allowWebSearch = f
   const model = process.env.AI_MODEL || "gemini-3.6-flash";
 
   let response;
-  const maxAttempts = 2; // one real attempt + one retry
+  // Gemini can temporarily return 503 (service unavailable) or 429
+  // (rate limited). Retry transient failures with exponential backoff.
+  // Keep the total number of attempts bounded so a slow upstream cannot
+  // hold the user's request open indefinitely.
+  const maxAttempts = 4; // 1 initial attempt + up to 3 retries
+  const retryableStatuses = new Set([429, 500, 502, 503, 504]);
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       response = await ai.models.generateContent({ model, contents, config });
       break; // success
     } catch (err) {
       const status = getStatusCode(err);
+      const isRetryable = retryableStatuses.has(Number(status));
       const isLastAttempt = attempt === maxAttempts;
 
-      if (status === 429 && !isLastAttempt) {
-        console.warn(`[ai.js] 429 rate limit, retrying in 3s (attempt ${attempt}/${maxAttempts})`);
-        await sleep(3000);
-        continue;
+      if (!isRetryable || isLastAttempt) {
+        if (isRetryable) {
+          console.error(
+            `[ai.js] Gemini ${status} after ${maxAttempts} attempts; giving up.`
+          );
+          return {
+            _temporary_unavailable: true,
+            diagnosis:
+              "Marketra AI is temporarily busy. Please try again in a moment.",
+          };
+        }
+
+        // Permanent errors such as invalid API keys, invalid requests,
+        // or invalid models should fail immediately rather than wasting
+        // more quota/time on retries.
+        throw err;
       }
 
-      if (status === 429) {
-        // Retry didn't help — this is a real quota exhaustion, not a
-        // transient blip. Return a clean, distinguishable result
-        // instead of throwing a raw stack trace up to the route.
-        return {
-          _rate_limited: true,
-          diagnosis: "MARKETRA has hit its daily AI usage limit. Please try again later.",
-        };
-      }
+      // Exponential backoff: ~1s, ~2s, ~4s, with small jitter.
+      // This also handles 429s without hammering an already busy service.
+      const baseDelay = 1000 * 2 ** (attempt - 1);
+      const jitter = Math.floor(Math.random() * 250);
+      const delay = baseDelay + jitter;
 
-      // Not a rate-limit error — no point retrying, surface it.
-      throw err;
+      console.warn(
+        `[ai.js] Gemini ${status} temporary error, retrying in ${delay}ms ` +
+          `(attempt ${attempt}/${maxAttempts})`
+      );
+      await sleep(delay);
     }
   }
 
