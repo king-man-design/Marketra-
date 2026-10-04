@@ -142,6 +142,13 @@ router.post("/marketing", marketingLimiter, requireAuth, async (req, res) => {
       });
     }
 
+    if (result._temporary_unavailable) {
+      return res.status(503).json({
+        error: "ai_temporarily_unavailable",
+        message: result.diagnosis,
+      });
+    }
+
     if (sessionId) await saveTurn(sessionId, resolvedBusinessId, message, result);
 
     // If the AI returned dashboard-style recommendations for this turn,
