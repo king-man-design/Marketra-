@@ -71,21 +71,26 @@ async function askMarketra({ business, history = [], message, allowWebSearch = f
 
   async function generateWithRetries(modelName) {
     for (let attempt = 1; attempt <= attemptsPerModel; attempt++) {
+      const startedAt = Date.now();
       try {
-        const result = await ai.models.generateContent({
+        const generated = await ai.models.generateContent({
           model: modelName,
           contents,
           config,
         });
-        return { response: result };
+        console.info(`[ai.js] Model ${modelName} succeeded in ${Date.now() - startedAt}ms (attempt ${attempt}/${attemptsPerModel}).`);
+        return { response: generated, modelName };
       } catch (err) {
         const status = Number(getStatusCode(err));
         const retryable = retryableStatuses.has(status);
         const finalAttempt = attempt === attemptsPerModel;
-        console.warn(`[ai.js] Model ${modelName} failed with HTTP ${status || "unknown"} (attempt ${attempt}/${attemptsPerModel}).`);
+        console.warn(
+          `[ai.js] Model ${modelName} failed with HTTP ${status || "unknown"} ` +
+          `(attempt ${attempt}/${attemptsPerModel}; retryable=${retryable}).`
+        );
 
         if (!retryable || finalAttempt) {
-          return { error: err, status, retryable };
+          return { error: err, status, retryable, modelName };
         }
 
         const delay = 700 * 2 ** (attempt - 1) + Math.floor(Math.random() * 250);
@@ -93,30 +98,33 @@ async function askMarketra({ business, history = [], message, allowWebSearch = f
         await sleep(delay);
       }
     }
-    return { error: new Error("Model attempts exhausted"), retryable: true };
+    return { error: new Error("Model attempts exhausted"), retryable: true, modelName };
   }
 
   let result = await generateWithRetries(primaryModel);
   if (result.error && result.retryable && fallbackModel !== primaryModel) {
-    console.warn(`[ai.js] Primary model ${primaryModel} unavailable; trying fallback ${fallbackModel}.`);
+    console.warn(`[ai.js] Primary model ${primaryModel} unavailable; starting fallback ${fallbackModel}.`);
     result = await generateWithRetries(fallbackModel);
   }
 
   if (result.error) {
+    console.error(
+      `[ai.js] Generation failed on model ${result.modelName || "unknown"}; ` +
+      `last HTTP status=${result.status || "unknown"}; retryable=${Boolean(result.retryable)}.`
+    );
     if (result.retryable) {
-      console.error(`[ai.js] Primary/fallback generation failed. Last HTTP status: ${result.status || "unknown"}.`);
       return {
         _temporary_unavailable: true,
         diagnosis: "Marketra AI is temporarily busy. Please try again in a moment.",
       };
     }
     // Non-transient errors (invalid API key, bad request, unsupported model,
-    // permission/quota errors that are not retryable) should remain visible to
-    // the route logger, without dumping request prompts or credentials.
+    // permission/quota errors that are not retryable) are logged by the route.
     throw result.error;
   }
-  response = result.response;
 
+  const response = result.response;
+  console.info(`[ai.js] Using successful response from ${result.modelName}.`);
   const text = (response.text || "").trim();
   const cleaned = text.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
 
