@@ -630,18 +630,24 @@ function renderPlan(plan) {
   planEl.innerHTML = html;
 }
 
+let marketraRequestInFlight = false;
 composer.addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (marketraRequestInFlight) return;
   const message = promptInput.value.trim();
   if (!message) return;
-  if (!currentSessionId) await startNewChat();
-
-  addEntry("user", message);
-  promptInput.value = "";
-  const thinkingEntry = addEntry("ai", "Thinking…");
-  const thinkingP = thinkingEntry.querySelector("p");
-
+  marketraRequestInFlight = true;
+  const submitButton = composer.querySelector('button[type="submit"], button:not([type])');
+  if (submitButton) submitButton.disabled = true;
+  let thinkingP = null;
   try {
+    if (!currentSessionId) await startNewChat();
+
+    addEntry("user", message);
+    promptInput.value = "";
+    const thinkingEntry = addEntry("ai", "Thinking…");
+    thinkingP = thinkingEntry.querySelector("p");
+
     const options = await getAuthedFetchOptions({
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -659,7 +665,7 @@ composer.addEventListener("submit", async (e) => {
         }
         return;
       }
-      throw new Error(body.error || `status ${res.status}`);
+      throw new Error(body.message || body.error || `status ${res.status}`);
     }
     const plan = await res.json();
     thinkingP.textContent = plan.diagnosis || "Here's the briefing below.";
@@ -671,10 +677,17 @@ composer.addEventListener("submit", async (e) => {
     }
   } catch (err) {
     console.error("[composer]", err);
-    thinkingP.textContent =
-      err.name === "AbortError"
-        ? "The backend took too long to respond. Please try again."
-        : "Couldn't reach the MARKETRA backend.";
+    if (thinkingP) {
+      thinkingP.textContent =
+        err.name === "AbortError"
+          ? "The backend took too long to respond. Please try again."
+          : err.message && /temporarily busy|try again/i.test(err.message)
+            ? err.message
+            : "Couldn't reach the MARKETRA backend.";
+    }
+  } finally {
+    marketraRequestInFlight = false;
+    if (submitButton) submitButton.disabled = false;
   }
 });
 
