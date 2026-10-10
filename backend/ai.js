@@ -62,56 +62,60 @@ async function askMarketra({ business, history = [], message, allowWebSearch = f
     // than plain generation — only attach it when explicitly requested.
     ...(allowWebSearch && { tools: [{ googleSearch: {} }] }),
   };
-  const model = process.env.AI_MODEL || "gemini-3.6-flash";
-
-  let response;
-  // Gemini can temporarily return 503 (service unavailable) or 429
-  // (rate limited). Retry transient failures with exponential backoff.
-  // Keep the total number of attempts bounded so a slow upstream cannot
-  // hold the user's request open indefinitely.
-  const maxAttempts = 4; // 1 initial attempt + up to 3 retries
+  const primaryModel = process.env.AI_MODEL || "gemini-3.6-flash";
+  // Use a distinct, currently documented lower-cost model as a fallback.
+  // Do not use gemini-3.5-flash here: Google routes that deprecated ID to 3.6.
+  const fallbackModel = process.env.AI_FALLBACK_MODEL || "gemini-3.5-flash-lite";
   const retryableStatuses = new Set([429, 500, 502, 503, 504]);
+  const attemptsPerModel = 2;
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      response = await ai.models.generateContent({ model, contents, config });
-      break; // success
-    } catch (err) {
-      const status = getStatusCode(err);
-      const isRetryable = retryableStatuses.has(Number(status));
-      const isLastAttempt = attempt === maxAttempts;
+  async function generateWithRetries(modelName) {
+    for (let attempt = 1; attempt <= attemptsPerModel; attempt++) {
+      try {
+        const result = await ai.models.generateContent({
+          model: modelName,
+          contents,
+          config,
+        });
+        return { response: result };
+      } catch (err) {
+        const status = Number(getStatusCode(err));
+        const retryable = retryableStatuses.has(status);
+        const finalAttempt = attempt === attemptsPerModel;
+        console.warn(`[ai.js] Model ${modelName} failed with HTTP ${status || "unknown"} (attempt ${attempt}/${attemptsPerModel}).`);
 
-      if (!isRetryable || isLastAttempt) {
-        if (isRetryable) {
-          console.error(
-            `[ai.js] Gemini ${status} after ${maxAttempts} attempts; giving up.`
-          );
-          return {
-            _temporary_unavailable: true,
-            diagnosis:
-              "Marketra AI is temporarily busy. Please try again in a moment.",
-          };
+        if (!retryable || finalAttempt) {
+          return { error: err, status, retryable };
         }
 
-        // Permanent errors such as invalid API keys, invalid requests,
-        // or invalid models should fail immediately rather than wasting
-        // more quota/time on retries.
-        throw err;
+        const delay = 700 * 2 ** (attempt - 1) + Math.floor(Math.random() * 250);
+        console.warn(`[ai.js] Retrying ${modelName} in ${delay}ms.`);
+        await sleep(delay);
       }
-
-      // Exponential backoff: ~1s, ~2s, ~4s, with small jitter.
-      // This also handles 429s without hammering an already busy service.
-      const baseDelay = 1000 * 2 ** (attempt - 1);
-      const jitter = Math.floor(Math.random() * 250);
-      const delay = baseDelay + jitter;
-
-      console.warn(
-        `[ai.js] Gemini ${status} temporary error, retrying in ${delay}ms ` +
-          `(attempt ${attempt}/${maxAttempts})`
-      );
-      await sleep(delay);
     }
+    return { error: new Error("Model attempts exhausted"), retryable: true };
   }
+
+  let result = await generateWithRetries(primaryModel);
+  if (result.error && result.retryable && fallbackModel !== primaryModel) {
+    console.warn(`[ai.js] Primary model ${primaryModel} unavailable; trying fallback ${fallbackModel}.`);
+    result = await generateWithRetries(fallbackModel);
+  }
+
+  if (result.error) {
+    if (result.retryable) {
+      console.error(`[ai.js] Primary/fallback generation failed. Last HTTP status: ${result.status || "unknown"}.`);
+      return {
+        _temporary_unavailable: true,
+        diagnosis: "Marketra AI is temporarily busy. Please try again in a moment.",
+      };
+    }
+    // Non-transient errors (invalid API key, bad request, unsupported model,
+    // permission/quota errors that are not retryable) should remain visible to
+    // the route logger, without dumping request prompts or credentials.
+    throw result.error;
+  }
+  response = result.response;
 
   const text = (response.text || "").trim();
   const cleaned = text.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
