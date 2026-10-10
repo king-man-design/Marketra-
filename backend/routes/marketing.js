@@ -28,6 +28,8 @@ const marketingLimiter = rateLimit({
 // sessionId are both verified server-side against the caller's own user id
 // before use — never trusted just because the browser sent them.
 router.post("/marketing", marketingLimiter, requireAuth, async (req, res) => {
+  const requestStartedAt = Date.now();
+  console.info("[marketing] Request accepted after authentication.");
   try {
     const { message, businessId, sessionId } = req.body;
 
@@ -133,18 +135,22 @@ router.post("/marketing", marketingLimiter, requireAuth, async (req, res) => {
       }
     }
 
+    console.info("[marketing] Calling Marketra AI.");
     const result = await askMarketra({ business, history, message, socialData, outcomes });
 
-    if (result._rate_limited) {
-      return res.status(429).json({
-        error: "rate_limited",
+    if (result._temporary_unavailable) {
+      console.warn(`[marketing] AI unavailable; returning HTTP 503 after ${Date.now() - requestStartedAt}ms.`);
+      return res.status(503).json({
+        error: "ai_temporarily_unavailable",
         message: result.diagnosis,
       });
     }
 
-    if (result._temporary_unavailable) {
-      return res.status(503).json({
-        error: "ai_temporarily_unavailable",
+    console.info(`[marketing] AI returned a result after ${Date.now() - requestStartedAt}ms.`);
+
+    if (result._rate_limited) {
+      return res.status(429).json({
+        error: "rate_limited",
         message: result.diagnosis,
       });
     }
@@ -185,7 +191,11 @@ router.post("/marketing", marketingLimiter, requireAuth, async (req, res) => {
 
     res.json(result);
   } catch (err) {
-    console.error("[/api/marketing]", err);
+    console.error("[/api/marketing] Request failed:", {
+      name: err?.name,
+      status: err?.status || err?.code,
+      message: err?.message,
+    });
     res.status(500).json({ error: "MARKETRA failed to respond. Check server logs." });
   }
 });
