@@ -9,6 +9,89 @@ window.addEventListener("error", (e) => {
 const API_BASE = "https://marketra-ai.onrender.com";
 const FETCH_TIMEOUT_MS = 20000;
 
+
+// ---------- Mobile readability patch ----------
+// Keep the AI response in normal document flow so it cannot overlap the chat
+// or get trapped in a fixed-height card on small screens.
+(function installMobileReadabilityStyles() {
+  if (document.getElementById("marketra-mobile-readability-fix")) return;
+  const style = document.createElement("style");
+  style.id = "marketra-mobile-readability-fix";
+  style.textContent = `
+    #plan {
+      position: relative !important;
+      inset: auto !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow: visible !important;
+      box-sizing: border-box !important;
+      overflow-wrap: anywhere;
+      word-break: normal;
+    }
+    #plan *, #messages *, #chatView * {
+      box-sizing: border-box;
+      min-width: 0;
+    }
+    #plan p, #plan li, #messages .entry p {
+      white-space: normal !important;
+      overflow-wrap: anywhere;
+      word-break: normal;
+      line-height: 1.55;
+    }
+    #messages .entry {
+      max-width: 100% !important;
+      height: auto !important;
+      min-height: 0 !important;
+      overflow: visible !important;
+    }
+    @media (max-width: 600px) {
+      #chatView h1, #chatView .view-title, .app-view h1 {
+        font-size: clamp(1.65rem, 7vw, 2.15rem) !important;
+        line-height: 1.15 !important;
+        overflow-wrap: anywhere;
+      }
+      #plan {
+        padding: 16px !important;
+        margin: 12px 0 !important;
+        border-radius: 18px !important;
+      }
+      #plan h3 {
+        font-size: 1.15rem !important;
+        line-height: 1.3 !important;
+        overflow-wrap: anywhere;
+      }
+      #plan h4 {
+        font-size: 1rem !important;
+        line-height: 1.35 !important;
+      }
+      #plan .block {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        margin-top: 14px;
+      }
+      #messages {
+        height: auto !important;
+        max-height: 48vh;
+        overflow-y: auto !important;
+        overscroll-behavior: contain;
+      }
+      #composer {
+        max-width: 100% !important;
+      }
+      #prompt {
+        min-width: 0 !important;
+        max-width: 100% !important;
+        font-size: 16px !important;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
 // ⚠️ FILL THESE IN from Supabase Dashboard → Settings → API
 const SUPABASE_URL = "https://qemilayhmeacjfsyeowp.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlbWlsYXlobWVhY2pmc3llb3dwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5NjAzMjQsImV4cCI6MjEwNTUzNjMyNH0.9EMIF5Ybnax3VjtPGTriDnw0zbWE22CnYKwZXS7Yk6k";
