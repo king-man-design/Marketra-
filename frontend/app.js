@@ -681,9 +681,7 @@ composer.addEventListener("submit", async (e) => {
       thinkingP.textContent =
         err.name === "AbortError"
           ? "The backend took too long to respond. Please try again."
-          : err.message && /temporarily busy|try again/i.test(err.message)
-            ? err.message
-            : "Couldn't reach the MARKETRA backend.";
+          : err.message || "Couldn't reach the MARKETRA backend.";
     }
   } finally {
     marketraRequestInFlight = false;
