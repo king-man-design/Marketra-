@@ -1,102 +1,60 @@
-# MARKETRA — AI Marketing Manager
+# MARKETRA AI — AI Marketing Manager
 
-A real AI marketing manager: a frontend with real user accounts, talking to
-a backend that calls an AI model with a strict marketing system prompt, and
-a Supabase database that remembers each business, its chat history, and
-(optionally) connected social accounts via Phyllo/InsightIQ.
+MARKETRA is a marketing system with Supabase authentication and storage, a Gemini-powered marketing engine, and SocialCrawl public social-profile data.
 
 ## Architecture
 
-```
-Browser (frontend/) — real login via Supabase Auth
-   │  fetch("/api/marketing")      Authorization: Bearer <supabase token>
-   ▼
+```text
+Browser (frontend/)
+  ├─ Supabase Auth and Row Level Security
+  └─ authenticated API requests
+       ↓
 Node.js + Express (backend/server.js)
-   │
-   ├── backend/authMiddleware.js  → verifies the caller's Supabase session
-   │                                 server-side before anything else runs
-   ├── backend/ai.js              → calls Google's Gemini API with the
-   │                                 system prompt + business profile + history.
-   │                                 Web search grounding is OFF by default
-   │                                 (it has its own, much tighter free-tier
-   │                                 quota) — pass allowWebSearch: true to
-   │                                 askMarketra() to enable it per call.
-   ├── backend/business.js        → reads the business profile and
-   │                                 conversation history from Supabase
-   ├── backend/phyllo.js          → Phyllo/InsightIQ API wrapper (social
-   │                                 account connections)
-   └── backend/routes/
-         marketing.js  → POST /api/marketing (the only endpoint that needs
-                          GEMINI_API_KEY, hence the only one behind the
-                          backend at all)
-         phyllo.js     → POST /api/phyllo/token, GET /api/phyllo/accounts,
-                          POST /api/phyllo/webhook, GET /api/phyllo/analytics/:id
+  ├─ backend/authMiddleware.js       verifies Supabase access tokens
+  ├─ backend/routes/marketing.js     POST /api/marketing
+  ├─ backend/routes/social.js        GET /api/social/accounts
+  │                                  POST /api/social/profile
+  │                                  POST /api/social/posts
+  │                                  POST /api/social/analyze
+  ├─ backend/providers/socialcrawl.js SocialCrawl API client
+  ├─ backend/services/socialNormalizer.js normalizes provider responses
+  ├─ backend/ai.js                   Gemini marketing analysis
+  └─ backend/business.js             business/chat data helpers
 ```
-
-Business profile, chat session, and history CRUD now happen **directly
-from the frontend to Supabase** (protected by Row Level Security) — the
-backend is only involved where a secret must stay a secret (the Gemini
-call, the Phyllo client secret) or where server-side authorization is
-required.
-
-No secret — `GEMINI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
-`PHYLLO_CLIENT_SECRET`, `PHYLLO_WEBHOOK_SECRET` — ever touches the browser.
-They live only in Render's environment variables.
 
 ## Setup
 
-1. **Install dependencies**
-   ```
-   npm install
-   ```
+1. Install dependencies with `npm install`.
+2. Copy `.env.example` to `.env` for local development and configure the values.
+3. Run `database/schema.sql` in the Supabase SQL editor. The script is intended to be re-runnable and migrates `social_accounts` to the SocialCrawl snapshot format.
+4. Start the backend with `npm start`.
 
-2. **Environment variables** — copy `.env.example` to `.env` and fill in:
-   - `GEMINI_API_KEY` — from aistudio.google.com/apikey
-   - `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_ANON_KEY` —
-     **required**, not optional: real user login, business profiles, and
-     chat history all depend on Supabase now.
-   - `PHYLLO_CLIENT_ID` / `PHYLLO_CLIENT_SECRET` / `PHYLLO_BASE_URL` /
-     `PHYLLO_WEBHOOK_SECRET` — only needed if you're using the social
-     account connection feature.
+## Environment variables
 
-3. **Database** — in your Supabase project's SQL editor, run
-   `database/schema.sql`. It's written to be safely re-runnable.
+- `GEMINI_API_KEY` — server-side Gemini key.
+- `AI_MODEL` and `AI_FALLBACK_MODEL` — optional model names.
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_ANON_KEY` — database/auth configuration. The service-role key stays on the backend.
+- `SOCIALCRAWL_API_KEY` — private SocialCrawl key; server-side only.
+- `SOCIALCRAWL_BASE_URL` — normally `https://www.socialcrawl.dev/v1`.
+- `CORS_ORIGIN` — your frontend origin, e.g. `https://marketraai.netlify.app`.
 
-4. **Run it**
-   ```
-   npm start
-   ```
+## SocialCrawl integration
 
-## What's implemented
+The dashboard's **Add Social Profile** action accepts a public handle on Instagram, TikTok, YouTube, or X/Twitter. MARKETRA requests public profile data from SocialCrawl and stores a snapshot scoped to the logged-in user. The marketing endpoint uses the saved snapshot rather than spending API credits on every chat turn.
 
-- Real user accounts via Supabase Auth (email/password login & signup)
-- Business profiles, chat sessions with full history, and a settings page
-  — all scoped per-user via Row Level Security
-- Real marketing system prompt (`backend/marketing-system.txt`) enforcing
-  diagnosis → priority → actions → assets → creative ideas → metrics →
-  decision rule, with figures expressed in ₹ by default
-- Phyllo/InsightIQ integration for connecting social accounts (sandbox) —
-  see `PHYLLO_SETUP.md`
-- Server-side authorization on every endpoint: a request's business/session
-  ID is always verified against the authenticated caller, never trusted
-  just because the browser sent it (see `SECURITY.md`)
-- Rate limiting, input validation, and security headers (see `SECURITY.md`)
+This is public-data lookup, not OAuth. It does not access private account analytics or grant permission to publish posts. See `SOCIALCRAWL_SETUP.md` for endpoints, credit notes, environment variables, and verification steps.
 
-## Not yet implemented
+## Security notes
 
-- **Live analytics integrations** (Shopify/Meta/GA/WhatsApp) beyond the
-  Phyllo social-account connection — the `analytics` table exists in the
-  schema but nothing writes to it yet.
-- **Execution layer** (auto-publishing campaigns/content) — not built.
-  This should always sit behind an explicit human approval step before
-  anything spends money or goes live.
-- Phyllo's data isn't yet fed into the AI's context — `getProfileAnalytics`
-  is fetchable but not wired into `askMarketra()`.
+- Social routes require a valid Supabase bearer token and are rate-limited.
+- SocialCrawl credentials never enter the browser bundle.
+- Keep `.env` out of Git; only `.env.example` belongs in the repository.
+- Supabase Row Level Security scopes user-owned records.
+- The marketing endpoint validates message and record IDs and verifies business/session ownership.
+- Helmet and a restricted CORS origin are enabled by the Express server.
 
-## Notes
+## Current limitations
 
-- To switch to OpenAI instead of Gemini, only `backend/ai.js` needs to
-  change — the routes, schema, and frontend are provider-agnostic.
-- See `PHYLLO_SETUP.md` for the social-account connection setup, and
-  `SECURITY.md` for the full security audit and what's still manual
-  (Supabase dashboard settings, dependency auditing).
+- SocialCrawl returns public profile/content data only; OAuth, private analytics, and publishing are not part of this integration.
+- The profile snapshot is refreshed when the user adds the profile again.
+- Posting, campaign execution, and external conversion analytics are not implemented.
