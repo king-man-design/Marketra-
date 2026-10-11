@@ -3,7 +3,6 @@ const rateLimit = require("express-rate-limit");
 const { createClient } = require("@supabase/supabase-js");
 const { askMarketra } = require("../ai");
 const { getBusiness, getRecentHistory, saveTurn } = require("../business");
-const { getProfileAnalytics } = require("../phyllo");
 const { requireAuth } = require("../authMiddleware");
 const { isValidUuid, isValidMessage } = require("../validate");
 
@@ -81,57 +80,29 @@ router.post("/marketing", marketingLimiter, requireAuth, async (req, res) => {
     const business = resolvedBusinessId ? await getBusiness(resolvedBusinessId) : null;
     const history = sessionId ? await getRecentHistory(sessionId) : [];
 
-    // Pull real connected-account analytics, if any exist, so recommendations
-    // can be grounded in actual social data rather than the business
-    // profile alone. This never fabricates anything: if there's no
-    // connected account, or the Phyllo call fails, socialData stays null
-    // and the AI is told explicitly that no social data is available —
-    // it does not silently fall back to guessing.
-    let outcomes = null;
-    if (supabase) {
-      try {
-        const { data: recentOutcomes } = await supabase
-          .from("recommendation_outcomes")
-          .select("metric_name, metric_value, result_summary, recorded_at")
-          .eq("business_id", resolvedBusinessId)
-          .order("recorded_at", { ascending: false })
-          .limit(10);
-        if (recentOutcomes && recentOutcomes.length) outcomes = recentOutcomes;
-      } catch (err) {
-        console.warn("[marketing] could not load recommendation outcomes:", err.message);
-      }
-    }
-
+    // Use the latest saved SocialCrawl snapshots. Do not spend API credits on every chat turn.
     let socialData = null;
     if (supabase) {
       try {
-        const { data: accounts } = await supabase
+        const { data: accounts, error: socialError } = await supabase
           .from("social_accounts")
-          .select("platform, handle, phyllo_account_id")
+          .select("platform, handle, profile_data, last_sync_at")
           .eq("marketra_user_id", req.userId)
           .eq("connection_status", "connected")
-          .not("phyllo_account_id", "is", null);
-
+          .order("last_sync_at", { ascending: false })
+          .limit(10);
+        if (socialError) throw socialError;
         if (accounts && accounts.length) {
-          const fetched = await Promise.all(
-            accounts.map(async (acc) => {
-              try {
-                const analytics = await getProfileAnalytics(acc.phyllo_account_id);
-                return { handle: acc.handle, ...analytics };
-              } catch (err) {
-                // A single failed Phyllo call must not break the whole
-                // request — log it, drop that one account's data, and
-                // continue with whatever did succeed (possibly none).
-                console.warn(`[marketing] Phyllo analytics fetch failed for account ${acc.phyllo_account_id}:`, err.message);
-                return null;
-              }
-            })
-          );
-          const successful = fetched.filter(Boolean);
-          if (successful.length) socialData = successful;
+          socialData = accounts.map((account) => ({
+            platform: account.platform,
+            handle: account.handle,
+            last_sync_at: account.last_sync_at,
+            data: account.profile_data?.normalized || account.profile_data?.provider_response?.data || account.profile_data || null,
+            source: "SocialCrawl public profile snapshot",
+          }));
         }
       } catch (err) {
-        console.warn("[marketing] could not check connected social accounts:", err.message);
+        console.warn("[marketing] could not load saved SocialCrawl data:", err.message);
       }
     }
 
