@@ -7,90 +7,7 @@ window.addEventListener("error", (e) => {
 });
 
 const API_BASE = "https://marketra-ai.onrender.com";
-const FETCH_TIMEOUT_MS = 20000;
-
-
-// ---------- Mobile readability patch ----------
-// Keep the AI response in normal document flow so it cannot overlap the chat
-// or get trapped in a fixed-height card on small screens.
-(function installMobileReadabilityStyles() {
-  if (document.getElementById("marketra-mobile-readability-fix")) return;
-  const style = document.createElement("style");
-  style.id = "marketra-mobile-readability-fix";
-  style.textContent = `
-    #plan {
-      position: relative !important;
-      inset: auto !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      height: auto !important;
-      min-height: 0 !important;
-      max-height: none !important;
-      overflow: visible !important;
-      box-sizing: border-box !important;
-      overflow-wrap: anywhere;
-      word-break: normal;
-    }
-    #plan *, #messages *, #chatView * {
-      box-sizing: border-box;
-      min-width: 0;
-    }
-    #plan p, #plan li, #messages .entry p {
-      white-space: normal !important;
-      overflow-wrap: anywhere;
-      word-break: normal;
-      line-height: 1.55;
-    }
-    #messages .entry {
-      max-width: 100% !important;
-      height: auto !important;
-      min-height: 0 !important;
-      overflow: visible !important;
-    }
-    @media (max-width: 600px) {
-      #chatView h1, #chatView .view-title, .app-view h1 {
-        font-size: clamp(1.65rem, 7vw, 2.15rem) !important;
-        line-height: 1.15 !important;
-        overflow-wrap: anywhere;
-      }
-      #plan {
-        padding: 16px !important;
-        margin: 12px 0 !important;
-        border-radius: 18px !important;
-      }
-      #plan h3 {
-        font-size: 1.15rem !important;
-        line-height: 1.3 !important;
-        overflow-wrap: anywhere;
-      }
-      #plan h4 {
-        font-size: 1rem !important;
-        line-height: 1.35 !important;
-      }
-      #plan .block {
-        height: auto !important;
-        max-height: none !important;
-        overflow: visible !important;
-        margin-top: 14px;
-      }
-      #messages {
-        height: auto !important;
-        max-height: 48vh;
-        overflow-y: auto !important;
-        overscroll-behavior: contain;
-      }
-      #composer {
-        max-width: 100% !important;
-      }
-      #prompt {
-        min-width: 0 !important;
-        max-width: 100% !important;
-        font-size: 16px !important;
-      }
-    }
-  `;
-  document.head.appendChild(style);
-})();
+const FETCH_TIMEOUT_MS = 90000; // AI requests can take 20-60 seconds; avoid aborting just before the result arrives.
 
 // ⚠️ FILL THESE IN from Supabase Dashboard → Settings → API
 const SUPABASE_URL = "https://qemilayhmeacjfsyeowp.supabase.co";
@@ -681,36 +598,94 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-function renderPlan(plan) {
-  if (!plan || plan._parse_error) {
-    planEl.hidden = true;
-    return;
+function firstText(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number") return String(value);
   }
-  planEl.hidden = false;
-  const list = (arr, ordered) => {
+  return "";
+}
+
+function normalizeList(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => {
+      if (typeof item === "string" || typeof item === "number") return String(item);
+      if (item && typeof item === "object") {
+        return firstText(item.title, item.text, item.action, item.description, item.name, JSON.stringify(item));
+      }
+      return "";
+    }).filter(Boolean);
+  }
+  if (typeof value === "string" && value.trim()) return [value.trim()];
+  return [];
+}
+
+function renderPlan(plan) {
+  if (!plan || typeof plan !== "object") {
+    planEl.hidden = true;
+    return false;
+  }
+
+  // Accept the common API response envelopes without assuming one exact shape.
+  const data = plan.plan && typeof plan.plan === "object" ? plan.plan
+    : plan.result && typeof plan.result === "object" ? plan.result
+    : plan.data && typeof plan.data === "object" ? plan.data
+    : plan;
+  const title = firstText(data.priority?.title, data.title, data.headline, data.strategy_title);
+  const reason = firstText(data.priority?.reason, data.reason, data.summary, data.overview, data.explanation);
+  const diagnosis = firstText(data.diagnosis, data.answer, data.response, data.message, data.text, data.content);
+  const today = normalizeList(data.today || data.do_today || data.actions_today || data.immediate_actions);
+  const next = normalizeList(data.next || data.next_steps || data.action_plan || data.recommendations);
+  const metrics = normalizeList(data.metrics || data.kpis || data.measurement);
+  const assets = data.assets && typeof data.assets === "object" && !Array.isArray(data.assets) ? data.assets : {};
+  const ideas = Array.isArray(data.creative_ideas) ? data.creative_ideas : [];
+
+  const hasStructuredContent = Boolean(title || reason || today.length || next.length || metrics.length ||
+    Object.keys(assets).length || ideas.length);
+
+  // If the backend returns plain text or a different JSON shape, show it rather than hiding the answer.
+  if (!hasStructuredContent) {
+    const fallback = diagnosis || (typeof data === "string" ? data : "");
+    if (!fallback) {
+      planEl.hidden = true;
+      return false;
+    }
+    planEl.hidden = false;
+    planEl.innerHTML = `<div class="block"><h4>MARKETRA's Answer</h4><p class="plan-answer">${escapeHtml(fallback).replace(/\n/g, "<br>")}</p></div>`;
+    return true;
+  }
+
+  const list = (arr, ordered = true) => {
+    if (!arr.length) return "";
     const tag = ordered ? "ol" : "ul";
-    return `<${tag}>${(arr || []).map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</${tag}>`;
+    return `<${tag}>${arr.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</${tag}>`;
   };
 
-  let html = `
-    <h3>${escapeHtml(plan.priority?.title) || "Strategy Directive"}</h3>
-    <p style="color:var(--ink-secondary);">${escapeHtml(plan.priority?.reason)}</p>
-    <div class="block"><h4>Do Today</h4>${list(plan.today, true)}</div>
-    <div class="block"><h4>Next Steps</h4>${list(plan.next, true)}</div>
-  `;
-  if (plan.assets && Object.keys(plan.assets).length) {
-    html += `<div class="block"><h4>Assets</h4>` +
-      Object.entries(plan.assets).map(([k, v]) => `<p><b>${escapeHtml(k)}:</b> ${escapeHtml(v)}</p>`).join("") + `</div>`;
+  let html = "";
+  if (title || data.priority?.title) {
+    html += `<h3>${escapeHtml(title || "Strategy Directive")}</h3>`;
+  } else {
+    html += `<h3>MARKETRA Strategy</h3>`;
   }
-  if (plan.creative_ideas && plan.creative_ideas.length) {
+  if (reason) html += `<p class="plan-reason" style="color:var(--ink-secondary);">${escapeHtml(reason)}</p>`;
+  if (diagnosis && diagnosis !== reason) {
+    html += `<div class="block"><h4>Analysis</h4><p class="plan-answer">${escapeHtml(diagnosis).replace(/\n/g, "<br>")}</p></div>`;
+  }
+  if (today.length) html += `<div class="block"><h4>Do Today</h4>${list(today)}</div>`;
+  if (next.length) html += `<div class="block"><h4>Next Steps</h4>${list(next)}</div>`;
+  if (Object.keys(assets).length) {
+    html += `<div class="block"><h4>Assets</h4>` +
+      Object.entries(assets).map(([k, v]) => `<p><b>${escapeHtml(k)}:</b> ${escapeHtml(typeof v === "string" ? v : JSON.stringify(v))}</p>`).join("") + `</div>`;
+  }
+  if (ideas.length) {
     html += `<div class="block"><h4>Creative Ideas</h4>` +
-      plan.creative_ideas.map((i) => `<p><b>${escapeHtml(i.concept)}</b><br><span style="color:var(--ink-secondary);">${escapeHtml(i.why_it_works)}</span></p>`).join("") +
+      ideas.map((i) => `<p><b>${escapeHtml(firstText(i?.concept, i?.title, "Idea"))}</b><br><span style="color:var(--ink-secondary);">${escapeHtml(firstText(i?.why_it_works, i?.description, i?.details))}</span></p>`).join("") +
       `</div>`;
   }
-  if (plan.metrics && plan.metrics.length) {
-    html += `<div class="block"><h4>Watch</h4>${list(plan.metrics, false)}</div>`;
-  }
+  if (metrics.length) html += `<div class="block"><h4>Watch</h4>${list(metrics, false)}</div>`;
+  planEl.hidden = false;
   planEl.innerHTML = html;
+  return true;
 }
 
 let marketraRequestInFlight = false;
@@ -750,9 +725,29 @@ composer.addEventListener("submit", async (e) => {
       }
       throw new Error(body.message || body.error || `status ${res.status}`);
     }
-    const plan = await res.json();
-    thinkingP.textContent = plan.diagnosis || "Here's the briefing below.";
-    renderPlan(plan);
+    const responseText = await res.text();
+    let plan;
+    try {
+      plan = JSON.parse(responseText);
+    } catch {
+      plan = { answer: responseText };
+    }
+
+    const responseData = plan?.plan || plan?.result || plan?.data || plan;
+    const diagnosis = firstText(
+      responseData?.diagnosis,
+      responseData?.answer,
+      responseData?.response,
+      responseData?.message,
+      responseData?.text,
+      responseData?.content,
+      typeof responseData === "string" ? responseData : ""
+    );
+    thinkingP.textContent = diagnosis || "Your marketing analysis is ready. Read the detailed result below.";
+    const rendered = renderPlan(plan);
+    if (!rendered && !diagnosis) {
+      thinkingP.textContent = "MARKETRA received a response, but it was empty or in an unsupported format. Please try again.";
+    }
     if (activeRecommendationId) {
       await updateRecommendationStatus(activeRecommendationId, "completed");
       activeRecommendationId = null;
