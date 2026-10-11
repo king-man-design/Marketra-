@@ -9,7 +9,6 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="https://cdn.getphyllo.com/connect/v2/phyllo-connect.js"></script>
 </head>
 <body>
   <div id="debugBanner" class="debug-banner"></div>
@@ -124,7 +123,7 @@
             <article class="metric-card metric-score">
               <div class="metric-top"><span>Marketing Score</span><span class="metric-icon">◎</span></div>
               <div class="metric-value">—<small>/100</small></div>
-              <div class="metric-note">Connect social accounts to calculate your score.</div>
+              <div class="metric-note">Add public social profiles to calculate a data-based score.</div>
               <div class="metric-bar"><span style="width:0%"></span></div>
             </article>
             <article class="metric-card">
@@ -165,10 +164,10 @@
                 <div class="panel-heading compact"><div><span class="panel-kicker">PERFORMANCE</span><h2>Social analytics</h2></div><span class="live-pill">● Live</span></div>
                 <div class="chart-shell" id="analyticsChart">
                   <div class="chart-grid-lines"><i></i><i></i><i></i><i></i></div>
-                  <div class="chart-placeholder"><span class="chart-placeholder-icon">⌁</span><strong>Analytics will appear here</strong><p>Connect a social account to populate your performance chart with real data.</p></div>
+                  <div class="chart-placeholder"><span class="chart-placeholder-icon">⌁</span><strong>Analytics will appear here</strong><p>Add a public social profile to populate your performance chart with available data.</p></div>
                 </div>
                 <div id="connectedAccountsList" class="connected-list"></div>
-                <button id="connectSocialBtn" class="secondary-btn full-btn">＋ Connect Social Account</button>
+                <button id="connectSocialBtn" class="secondary-btn full-btn">＋ Add Social Profile</button>
                 <p class="auth-error" id="connectStatus"></p>
               </section>
 
@@ -176,7 +175,7 @@
                 <div class="panel-heading compact"><div><span class="panel-kicker">QUICK ACCESS</span><h2>Workspace</h2></div></div>
                 <div class="quick-grid">
                   <button class="quick-action" id="newChatFromDash"><span>✦</span><strong>New AI Chat</strong><small>Get a strategy answer</small></button>
-                  <button class="quick-action" id="connectSocialShortcut"><span>◎</span><strong>Connect Social</strong><small>Bring in real data</small></button>
+                  <button class="quick-action" id="connectSocialShortcut"><span>◎</span><strong>Connect Social</strong><small>Analyze public profile data</small></button>
                 </div>
               </section>
             </aside>

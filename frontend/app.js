@@ -490,7 +490,7 @@ document.getElementById("newChatFromHistory")?.addEventListener("click", () => s
 document.getElementById("newChatFromHistoryAlt")?.addEventListener("click", () => startNewChat());
 document.getElementById("connectSocialShortcut")?.addEventListener("click", () => document.getElementById("connectSocialBtn")?.click());
 
-// ---------- Phyllo social account connect ----------
+// ---------- SocialCrawl public profile integration ----------
 const connectSocialBtn = document.getElementById("connectSocialBtn");
 const connectStatus = document.getElementById("connectStatus");
 const connectedAccountsList = document.getElementById("connectedAccountsList");
@@ -498,49 +498,43 @@ const connectedAccountsList = document.getElementById("connectedAccountsList");
 async function getAuthedFetchOptions(extra = {}) {
   const { data } = await sb.auth.getSession();
   const token = data?.session?.access_token;
+  if (!token) throw new Error("Please log in again before adding a social profile.");
   return {
     ...extra,
     headers: { ...(extra.headers || {}), Authorization: `Bearer ${token}` },
   };
 }
 
-connectSocialBtn.addEventListener("click", async () => {
-  connectStatus.textContent = "Starting connection…";
+connectSocialBtn?.addEventListener("click", async () => {
+  const platformOptions = "Choose platform: instagram, tiktok, youtube, twitter";
+  const platform = window.prompt(platformOptions, "instagram");
+  if (!platform) return;
+  const normalizedPlatform = platform.trim().toLowerCase().replace(/^x$/, "twitter");
+  if (!["instagram", "tiktok", "youtube", "twitter"].includes(normalizedPlatform)) {
+    connectStatus.textContent = "Choose Instagram, TikTok, YouTube, or Twitter/X.";
+    return;
+  }
+  const handle = window.prompt(`Enter the public ${normalizedPlatform} username or handle (without @):`);
+  if (!handle?.trim()) return;
+
+  connectStatus.textContent = "Fetching public profile from SocialCrawl…";
   connectSocialBtn.disabled = true;
   try {
-    const options = await getAuthedFetchOptions({ method: "POST" });
-    const res = await fetchWithTimeout(`${API_BASE}/api/phyllo/token`, options);
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `status ${res.status}`);
-    const data = await res.json();
-    const { sdk_token } = data;
-
-    // ⚠️ CONFIRM against Phyllo's current Connect SDK docs — this init
-    // call (constructor name, config shape, event names) is a best-effort
-    // placeholder based on common SDK patterns, not verified current API.
-    if (!window.PhylloConnect) {
-      throw new Error("Phyllo Connect SDK did not load. Confirm the script URL in index.html.");
-    }
-    const phylloConnect = window.PhylloConnect.initialize({
-      clientDisplayName: "MARKETRA",
-      environment: "staging",
-      userId: data.user_id,
-      token: sdk_token,
+    const options = await getAuthedFetchOptions({
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ platform: normalizedPlatform, handle: handle.trim().replace(/^@/, "") }),
     });
-    phylloConnect.on("accountConnected", () => {
-      connectStatus.textContent = "Connected! Syncing…";
-      setTimeout(loadConnectedAccounts, 2000);
-    });
-    phylloConnect.on("accountError", (err) => {
-      console.error("[phyllo connect]", err);
-      connectStatus.textContent = "Connection failed. Please try again.";
-    });
-    phylloConnect.on("exit", () => {
-      connectSocialBtn.disabled = false;
-    });
-    phylloConnect.open();
+    const res = await fetchWithTimeout(`${API_BASE}/api/social/profile`, options);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `SocialCrawl request failed (${res.status}).`);
+    const left = Number.isFinite(Number(data.credits_remaining)) ? ` Credits remaining: ${data.credits_remaining}.` : "";
+    connectStatus.textContent = `Public ${normalizedPlatform} profile added successfully.${left}`;
+    await loadConnectedAccounts();
   } catch (err) {
-    console.error("[connectSocial]", err);
-    connectStatus.textContent = err.message || "Could not start connection.";
+    console.error("[SocialCrawl profile]", err);
+    connectStatus.textContent = err.message || "Could not fetch the public profile.";
+  } finally {
     connectSocialBtn.disabled = false;
   }
 });
@@ -548,24 +542,21 @@ connectSocialBtn.addEventListener("click", async () => {
 async function loadConnectedAccounts() {
   try {
     const options = await getAuthedFetchOptions();
-    const res = await fetchWithTimeout(`${API_BASE}/api/phyllo/accounts`, options);
+    const res = await fetchWithTimeout(`${API_BASE}/api/social/accounts`, options);
     if (!res.ok) return;
     const accounts = await res.json();
     if (connectedCountEl) connectedCountEl.textContent = String(accounts.length);
-    if (connectedSummaryEl) connectedSummaryEl.textContent = accounts.length ? accounts.map((a) => a.platform || "Social").filter(Boolean).slice(0, 2).join(" · ") : "No social accounts connected";
+    if (connectedSummaryEl) connectedSummaryEl.textContent = accounts.length ? accounts.map((a) => a.platform || "Social").filter(Boolean).slice(0, 2).join(" · ") : "No social profiles added";
+    if (!connectedAccountsList) return;
     if (!accounts.length) {
-      connectedAccountsList.innerHTML = `<p class="empty-note">No accounts connected yet.</p>`;
+      connectedAccountsList.innerHTML = `<p class="empty-note">No social profiles added yet. Add a public profile to begin.</p>`;
       return;
     }
-    connectedAccountsList.innerHTML = accounts
-      .map(
-        (a) => `
-        <div class="session-item">
-          <span class="s-title">${escapeHtml(a.platform) || "Account"} ${a.handle ? "· @" + escapeHtml(a.handle) : ""}</span>
-          <span class="s-date">${escapeHtml(a.connection_status)}</span>
-        </div>`
-      )
-      .join("");
+    connectedAccountsList.innerHTML = accounts.map((a) => `
+      <div class="session-item">
+        <span class="s-title">${escapeHtml(a.platform || "Social")} · @${escapeHtml(a.handle || "")}</span>
+        <span class="s-date">${escapeHtml(a.connection_status || "saved")}${a.last_sync_at ? ` · ${new Date(a.last_sync_at).toLocaleDateString()}` : ""}</span>
+      </div>`).join("");
   } catch (err) {
     console.error("[loadConnectedAccounts]", err);
   }
@@ -863,7 +854,7 @@ async function loadRecentOutcomes() {
 
 // A lightweight manual measurement capture keeps the product honest until
 // publishing + platform analytics are connected. It records the outcome but
-// never pretends the number came from InsightIQ.
+// never pretends the number came from a connected social platform.
 async function recordOutcomeForRecommendation(recommendationId) {
   if (!recommendationId || !currentBusiness) return;
   const metric = window.prompt("What metric did you measure? Example: profile visits");
