@@ -4,7 +4,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const path = require("path");
 const marketingRoutes = require("./routes/marketing");
-const phylloRoutes = require("./routes/phyllo");
+const socialRoutes = require("./routes/social");
 
 const app = express();
 app.set("trust proxy", 3);
@@ -28,18 +28,13 @@ if (!corsOrigin) {
 }
 app.use(cors({ origin: corsOrigin || "https://marketraai.netlify.app" }));
 
-app.use(
-  "/api/phyllo/webhook",
-  express.raw({ type: "application/json", limit: "1mb" })
-);
-
 app.use(express.json({ limit: "1mb" }));
 
 // Serve the static frontend (optional — you can also host it separately).
 app.use(express.static(path.join(__dirname, "..", "frontend")));
 
 app.use("/api", marketingRoutes);
-app.use("/api/phyllo", phylloRoutes);
+app.use("/api/social", socialRoutes);
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 

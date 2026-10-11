@@ -39,7 +39,7 @@ async function askMarketra({ business, history = [], message, allowWebSearch = f
   // data or whether none exists — never blur the two.
   const socialBlock =
     socialData && socialData.length
-      ? `CONNECTED SOCIAL ACCOUNT DATA (REAL, from InsightIQ/Phyllo — use this, do not invent numbers beyond it):\n${JSON.stringify(socialData, null, 2)}`
+      ? `CONNECTED SOCIAL PROFILE DATA (REAL, from SocialCrawl public data — use this, do not invent numbers beyond it):\n${JSON.stringify(socialData, null, 2)}`
       : "CONNECTED SOCIAL ACCOUNT DATA: none available. Do not invent engagement, follower, reach, or performance numbers. Any recommendation must be labeled as profile-based or general, not based on social analytics.";
 
   const outcomeBlock =
