@@ -56,6 +56,64 @@ const outcomesList = document.getElementById("outcomesList");
 const feed = document.getElementById("messages");
 const planEl = document.getElementById("plan");
 const composer = document.getElementById("composer");
+
+// Keep the strategy hidden by default. The circular trigger sits directly
+// after the latest MARKETRA answer, and the panel expands in normal page flow.
+const questStyle = document.createElement("style");
+questStyle.textContent = `
+  #marketraQuestSlot { display:flex; flex-direction:column; align-items:flex-start; gap:10px; margin:8px 0 16px 42px; width:calc(100% - 42px); box-sizing:border-box; }
+  #marketraQuestButton {
+    position:static; width:48px; height:48px; flex:0 0 48px;
+    border:1px solid rgba(167,139,250,.7); border-radius:50%;
+    background:var(--surface, #171717); color:var(--ink, #fff);
+    box-shadow:0 4px 14px rgba(0,0,0,.14); font-size:23px;
+    display:grid; place-items:center; cursor:pointer;
+  }
+  #marketraQuestButton[hidden], #marketraQuestPanel[hidden] { display:none !important; }
+  #marketraQuestPanel {
+    position:static; width:100%; max-width:560px; max-height:none;
+    overflow:visible; padding:15px; border-radius:16px;
+    background:var(--surface, #fff); color:var(--ink, #171717);
+    border:1px solid var(--border, rgba(120,120,120,.25));
+    box-shadow:0 5px 20px rgba(0,0,0,.12); box-sizing:border-box;
+  }
+  #marketraQuestPanel .quest-panel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 0 12px; }
+  #marketraQuestPanel .quest-panel-head strong { font-size:15px; }
+  #marketraQuestClose { border:0; border-radius:50%; width:34px; height:34px; cursor:pointer; font-size:20px; background:rgba(127,127,127,.14); color:inherit; }
+  #marketraQuestPanel #plan { display:block; width:100%; max-width:100%; max-height:none; overflow:visible; margin:0; }
+  #marketraQuestPanel #plan[hidden] { display:none !important; }
+  #marketraQuestPanel h3 { font-size:18px; line-height:1.3; overflow-wrap:anywhere; }
+  #marketraQuestPanel h4 { font-size:14px; line-height:1.35; }
+  #marketraQuestPanel p, #marketraQuestPanel li { overflow-wrap:anywhere; white-space:normal; }
+  #marketraQuestPanel ol, #marketraQuestPanel ul { padding-left:22px; }
+  @media (max-width:480px) { #marketraQuestSlot { margin-left:36px; width:calc(100% - 36px); } #marketraQuestButton { width:46px; height:46px; flex-basis:46px; } #marketraQuestPanel { padding:12px; } }
+`;
+document.head.appendChild(questStyle);
+const questSlot = document.createElement("div");
+questSlot.id = "marketraQuestSlot";
+const questPanel = document.createElement("section");
+questPanel.id = "marketraQuestPanel";
+questPanel.hidden = true;
+questPanel.setAttribute("aria-label", "Daily Quest action plan");
+questPanel.innerHTML = '<div class="quest-panel-head"><strong>✦ Daily Strategy</strong><button id="marketraQuestClose" type="button" aria-label="Close Daily Strategy">×</button></div>';
+const questButton = document.createElement("button");
+questButton.id = "marketraQuestButton";
+questButton.type = "button";
+questButton.hidden = true;
+questButton.textContent = "✦";
+questButton.title = "Open Daily Strategy";
+questButton.setAttribute("aria-label", "Open Daily Strategy action plan");
+questButton.setAttribute("aria-expanded", "false");
+questSlot.append(questButton, questPanel);
+questPanel.appendChild(planEl);
+questButton.addEventListener("click", () => {
+  questPanel.hidden = false;
+  questButton.setAttribute("aria-expanded", "true");
+});
+questPanel.querySelector("#marketraQuestClose").addEventListener("click", () => {
+  questPanel.hidden = true;
+  questButton.setAttribute("aria-expanded", "false");
+});
 const promptInput = document.getElementById("prompt");
 
 const settingsForm = document.getElementById("settingsForm");
@@ -560,6 +618,10 @@ async function openSession(sessionId, title) {
   feed.innerHTML = "";
   planEl.hidden = true;
   planEl.innerHTML = "";
+  questPanel.hidden = true;
+  questButton.hidden = true;
+  questButton.setAttribute("aria-expanded", "false");
+  questSlot.remove();
 
   const { data: msgs } = await sb
     .from("conversations")
@@ -652,6 +714,7 @@ function renderPlan(plan) {
     }
     planEl.hidden = false;
     planEl.innerHTML = `<div class="block"><h4>MARKETRA's Answer</h4><p class="plan-answer">${escapeHtml(fallback).replace(/\n/g, "<br>")}</p></div>`;
+    questButton.hidden = false;
     return true;
   }
 
@@ -685,6 +748,7 @@ function renderPlan(plan) {
   if (metrics.length) html += `<div class="block"><h4>Watch</h4>${list(metrics, false)}</div>`;
   planEl.hidden = false;
   planEl.innerHTML = html;
+  questButton.hidden = false;
   return true;
 }
 
@@ -745,6 +809,11 @@ composer.addEventListener("submit", async (e) => {
     );
     thinkingP.textContent = diagnosis || "Your marketing analysis is ready. Read the detailed result below.";
     const rendered = renderPlan(plan);
+    if (rendered) {
+      questPanel.hidden = true;
+      questButton.setAttribute("aria-expanded", "false");
+      thinkingEntry.after(questSlot);
+    }
     if (!rendered && !diagnosis) {
       thinkingP.textContent = "MARKETRA received a response, but it was empty or in an unsupported format. Please try again.";
     }
