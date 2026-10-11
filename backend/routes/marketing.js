@@ -107,7 +107,12 @@ router.post("/marketing", marketingLimiter, requireAuth, async (req, res) => {
     }
 
     console.info("[marketing] Calling Marketra AI.");
-    const result = await askMarketra({ business, history, message, socialData, outcomes });
+    const result = await askMarketra({
+      business,
+      history,
+      message,
+      socialData,
+    });
 
     if (result._temporary_unavailable) {
       console.warn(`[marketing] AI unavailable; returning HTTP 503 after ${Date.now() - requestStartedAt}ms.`);
