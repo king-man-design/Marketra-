@@ -175,6 +175,12 @@ inventing numbers to sound more authoritative.
 Omit the "recommendations" key entirely for ordinary chat turns that
 aren't asking for the dashboard's priority list.
 
+READABILITY AND STRUCTURE (IMPORTANT):
+Never write the user-facing answer as one long paragraph or a story-like wall of text.
+Keep the diagnosis field concise and format it using clear, short sections separated by newline characters, for example:
+"**Summary**\nOne or two sentence answer.\n\n**What this means**\n- Point one\n- Point two\n\n**Recommended actions**\n1. Specific action\n2. Specific action\n\n**Measure success**\nThe one metric to track and how to interpret it."
+Use plain text headings and numbered/bulleted lines inside JSON strings (do not use Markdown code fences). Prefer short sentences, meaningful headings, bullets, numbered steps, and whitespace. Put actions in the today/next arrays when appropriate rather than burying them in diagnosis. For how-to answers, use numbered steps. For comparisons, use clear option labels and pros/cons. For marketing copy requests, clearly separate each deliverable (Hook, Caption, CTA, etc.). For simple questions, answer briefly but still use readable structure when the answer has multiple parts. Avoid repeating the same point in multiple sections. Never output a single dense paragraph when the answer naturally has multiple points.
+
 RESPONSE FORMAT:
 Respond ONLY with a single JSON object, no prose outside it, no markdown
 fences, matching this shape exactly:
