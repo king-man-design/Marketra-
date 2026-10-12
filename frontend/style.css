@@ -101,3 +101,24 @@ h1,h2,h3,.brand-lockup { font-family: "Space Grotesk", sans-serif; }
 .today-action-banner{margin:0 18px 14px;padding:18px;border-radius:16px;background:linear-gradient(135deg,#17132f,#35206e);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:18px;box-shadow:0 12px 30px rgba(58,36,120,.16)}
 .today-action-banner[hidden]{display:none}.today-action-banner h2{margin:4px 0 5px;font-size:18px;line-height:1.2}.today-action-banner p{margin:0;color:#d8d2f4;font-size:11px;line-height:1.5;max-width:620px}.today-action-banner .panel-kicker{color:#bcaaff}.today-action-banner .primary-btn{background:#fff;color:#4f35b8;flex-shrink:0}.measurement-panel{margin-top:18px}.outcomes-list{display:grid;gap:8px;padding:0 18px 18px}.outcome-item{border:1px solid #e8ebf2;background:#fafbfe;border-radius:12px;padding:12px 13px}.outcome-item>div{display:flex;justify-content:space-between;gap:12px;align-items:center}.outcome-metric{font-size:10px;color:#7b8598;text-transform:uppercase;letter-spacing:.08em;font-weight:800}.outcome-item strong{font-size:12px}.outcome-item p{margin:6px 0 3px;font-size:11px;color:#59647a;line-height:1.45}.outcome-item small{font-size:9px;color:#9aa3b2}.priority-measure-btn{border:1px solid #dce8e2;background:#f2fbf6;color:#21805d;border-radius:9px;padding:8px 10px;font-size:10px;font-weight:600}
 @media (max-width:600px){.today-action-banner{align-items:flex-start;flex-direction:column}.today-action-banner .primary-btn{width:100%}}
+
+/* Official supplied MARKETRA logo and privacy/auth enhancements */
+.brand-logo { display:block; width:190px; max-width:100%; height:auto; object-fit:contain; }
+.brand-lockup-auth .brand-logo { width:min(330px, 82vw); }
+.sidebar .brand-logo { width:168px; }
+.privacy-consent { display:flex !important; grid-template-columns:20px 1fr; align-items:start; gap:9px !important; line-height:1.5; color:#b8c0d1 !important; font-weight:400 !important; }
+.privacy-consent input { width:16px !important; height:16px; margin:2px 0 0; accent-color:#7657ff; }
+.privacy-consent a,.privacy-footnote a { color:#b8a4ff; text-decoration:underline; }
+.privacy-footnote { margin:14px 0 0; color:#929bb0; font-size:11px; line-height:1.5; text-align:center; }
+.verification-panel { margin-top:18px; padding:18px; border-radius:16px; border:1px solid rgba(167,139,250,.35); background:rgba(118,87,255,.08); }
+.verification-panel h2 { margin-bottom:8px; font-size:21px; }
+.verification-panel p { color:#b8c0d1; line-height:1.55; font-size:13px; }
+.secondary-btn { background:transparent; color:#c2b4ff; border:1px solid rgba(194,180,255,.5); padding:10px 13px; border-radius:10px; font-weight:700; }
+.secondary-btn:disabled { opacity:.6; cursor:wait; }
+.privacy-overlay { position:fixed; inset:0; z-index:10000; display:grid; place-items:center; padding:18px; background:rgba(4,8,20,.78); overflow:auto; }
+.privacy-overlay[hidden] { display:none !important; }
+.privacy-card { position:relative; width:min(680px,100%); max-height:90dvh; overflow:auto; padding:28px; border-radius:20px; background:#fff; color:#182033; box-shadow:0 25px 80px rgba(0,0,0,.3); }
+.privacy-card h2 { margin:6px 0 16px; font-size:25px; }
+.privacy-card p { font-size:13px; line-height:1.65; color:#4d5870; }
+.privacy-close { position:absolute; top:12px; right:14px; width:36px; height:36px; border:0; border-radius:50%; background:#eef0f6; font-size:24px; }
+@media (max-width:480px) { .auth-card { padding:24px 20px; } .brand-lockup-auth { margin-bottom:22px; } .privacy-card { padding:24px 20px; } }

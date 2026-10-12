@@ -17,20 +17,29 @@
   <section id="authView" class="view auth-view">
     <div class="auth-shell">
       <div class="brand-lockup brand-lockup-auth">
-        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
-        <div><strong>MARKETRA</strong><em>AI</em></div>
+        <img class="brand-logo" src="assets/marketra-logo.png" alt="MARKETRA AI — Smarter Marketing. Bigger Growth.">
       </div>
       <div class="auth-card">
         <div class="eyebrow">MARKETING OPERATING SYSTEM</div>
         <h1>Turn business data into your next move.</h1>
         <p class="subtitle" id="authSubtitle">Log in to your account</p>
         <form id="authForm">
+          <label id="authNameLabel" hidden>Full name<input id="authName" type="text" placeholder="Your name" autocomplete="name" maxlength="100"></label>
           <label>Email<input id="authEmail" type="email" placeholder="you@business.com" autocomplete="email" required></label>
           <label>Password<input id="authPassword" type="password" placeholder="••••••••" autocomplete="current-password" required minlength="6"></label>
+          <label id="authConfirmPasswordLabel" hidden>Confirm password<input id="authConfirmPassword" type="password" placeholder="Repeat your password" autocomplete="new-password" minlength="8"></label>
+          <label id="privacyConsentLabel" class="privacy-consent" hidden><input id="privacyConsent" type="checkbox"> <span>I have read the <a href="#privacyNotice" id="privacyLink">Privacy Notice</a> and agree to the processing of my information as described there.</span></label>
           <button class="primary-btn auth-submit" type="submit" id="authSubmitBtn">Log In</button>
         </form>
         <p class="auth-toggle"><span id="authToggleText">Don't have an account?</span> <button type="button" id="authToggleBtn">Sign up</button></p>
-        <p class="auth-error" id="authError"></p>
+        <p class="auth-error" id="authError" role="status" aria-live="polite"></p>
+        <section id="verificationPanel" class="verification-panel" hidden aria-live="polite">
+          <h2>Check your email</h2>
+          <p>We created your signup request. Open the verification link sent by Supabase to confirm your email, then return here and sign in.</p>
+          <button type="button" id="resendVerificationBtn" class="secondary-btn">Resend verification email</button>
+          <p id="verificationStatus" class="auth-error"></p>
+        </section>
+        <p class="privacy-footnote">Your information is used to provide MARKETRA’s marketing services. <a href="#privacyNotice" id="privacyLinkBottom">Privacy Notice</a></p>
       </div>
     </div>
     <div class="auth-glow auth-glow-one"></div><div class="auth-glow auth-glow-two"></div>
@@ -40,8 +49,7 @@
   <section id="onboardingView" class="view auth-view" hidden>
     <div class="auth-shell compact-auth">
       <div class="brand-lockup brand-lockup-auth">
-        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
-        <div><strong>MARKETRA</strong><em>AI</em></div>
+        <img class="brand-logo" src="assets/marketra-logo.png" alt="MARKETRA AI — Smarter Marketing. Bigger Growth.">
       </div>
       <div class="auth-card">
         <div class="eyebrow">ONE-TIME SETUP</div>
@@ -63,13 +71,28 @@
     </div>
   </section>
 
+  <!-- Privacy notice / DPDP transparency -->
+  <section id="privacyNotice" class="privacy-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="privacyTitle">
+    <div class="privacy-card">
+      <button type="button" id="closePrivacyBtn" class="privacy-close" aria-label="Close privacy notice">×</button>
+      <p class="eyebrow">PRIVACY & DATA</p>
+      <h2 id="privacyTitle">MARKETRA AI Privacy Notice</h2>
+      <p><strong>What we may process:</strong> account details, business information you provide, your messages and AI-generated marketing results, and public social-profile data you choose to look up.</p>
+      <p><strong>Why:</strong> to create and secure your account, provide marketing analysis, save your workspace, prevent abuse, and improve reliability.</p>
+      <p><strong>Service providers:</strong> MARKETRA uses Supabase for authentication/database, Render for backend hosting, Google Gemini for AI processing, and SocialCrawl when you request public social-profile data. Information sent to these providers is limited to what is needed for the requested service, subject to their applicable terms and settings.</p>
+      <p><strong>Your choices:</strong> do not submit information you are not authorized to share. You may request access, correction, deletion, or withdrawal of consent where applicable by contacting the service operator through the contact channel published on the MARKETRA website. Do not rely on this notice as a substitute for a completed legal privacy policy.</p>
+      <p><strong>Retention and security:</strong> data is retained as needed to operate the service and meet applicable obligations. Access controls and database policies are used, but no online service can promise absolute security.</p>
+      <p><strong>Important:</strong> this is a starter transparency notice based on the code reviewed, not a legal opinion or a claim of full DPDP Act compliance. Before launch, publish the operator’s legal name, working privacy/grievance contact, retention schedule, and final policy reviewed for your actual practices.</p>
+      <button type="button" id="closePrivacyBtnBottom" class="primary-btn">Close</button>
+    </div>
+  </section>
+
   <!-- MAIN APP -->
   <div id="appShell" hidden>
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-top">
         <div class="brand-lockup">
-          <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
-          <div><strong>MARKETRA</strong><em>AI</em></div>
+          <img class="brand-logo" src="assets/marketra-logo.png" alt="MARKETRA AI — Smarter Marketing. Bigger Growth.">
         </div>
         <button class="mobile-close" id="mobileCloseBtn" aria-label="Close navigation">×</button>
       </div>
@@ -95,8 +118,7 @@
     <div class="app-content">
       <header class="app-topbar">
         <div class="mobile-brand brand-lockup">
-          <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
-          <div><strong>MARKETRA</strong><em>AI</em></div>
+          <img class="brand-logo" src="assets/marketra-logo.png" alt="MARKETRA AI — Smarter Marketing. Bigger Growth.">
         </div>
         <button class="mobile-menu" id="mobileMenuBtn" aria-label="Open navigation">☰</button>
         <div class="topbar-search"><span>⌕</span><input aria-label="Search" placeholder="Search your marketing workspace"></div>

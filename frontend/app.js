@@ -32,6 +32,16 @@ const appShell = document.getElementById("appShell");
 const authForm = document.getElementById("authForm");
 const authEmail = document.getElementById("authEmail");
 const authPassword = document.getElementById("authPassword");
+const authName = document.getElementById("authName");
+const authNameLabel = document.getElementById("authNameLabel");
+const authConfirmPassword = document.getElementById("authConfirmPassword");
+const authConfirmPasswordLabel = document.getElementById("authConfirmPasswordLabel");
+const privacyConsent = document.getElementById("privacyConsent");
+const privacyConsentLabel = document.getElementById("privacyConsentLabel");
+const verificationPanel = document.getElementById("verificationPanel");
+const verificationStatus = document.getElementById("verificationStatus");
+const resendVerificationBtn = document.getElementById("resendVerificationBtn");
+let pendingVerificationEmail = "";
 const authSubmitBtn = document.getElementById("authSubmitBtn");
 const authSubtitle = document.getElementById("authSubtitle");
 const authToggleBtn = document.getElementById("authToggleBtn");
@@ -126,46 +136,108 @@ let currentBusiness = null;
 let currentSessionId = null;
 
 // ---------- Auth ----------
-authToggleBtn.addEventListener("click", () => {
-  isSignUpMode = !isSignUpMode;
-  authSubtitle.textContent = isSignUpMode ? "Create your account" : "Log in to your account";
-  authSubmitBtn.textContent = isSignUpMode ? "Sign Up" : "Log In";
-  authToggleText.textContent = isSignUpMode ? "Already have an account?" : "Don't have an account?";
-  authToggleBtn.textContent = isSignUpMode ? "Log in" : "Sign up";
+function setAuthMode(signUp) {
+  isSignUpMode = signUp;
+  authSubtitle.textContent = signUp ? "Create your MARKETRA account" : "Log in to your account";
+  authSubmitBtn.textContent = signUp ? "Create Account" : "Log In";
+  authToggleText.textContent = signUp ? "Already have an account?" : "Don't have an account?";
+  authToggleBtn.textContent = signUp ? "Log in" : "Sign up";
+  authNameLabel.hidden = !signUp;
+  authName.required = signUp;
+  authConfirmPasswordLabel.hidden = !signUp;
+  authConfirmPassword.required = signUp;
+  privacyConsentLabel.hidden = !signUp;
+  privacyConsent.required = signUp;
+  authPassword.autocomplete = signUp ? "new-password" : "current-password";
   authError.textContent = "";
-});
+  verificationPanel.hidden = true;
+}
+authToggleBtn.addEventListener("click", () => setAuthMode(!isSignUpMode));
 
 authForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   authError.textContent = "";
+  verificationStatus.textContent = "";
+  if (isSignUpMode) {
+    if (authPassword.value.length < 8) {
+      authError.textContent = "Use a password with at least 8 characters.";
+      return;
+    }
+    if (authPassword.value !== authConfirmPassword.value) {
+      authError.textContent = "Your passwords do not match.";
+      return;
+    }
+    if (!privacyConsent.checked) {
+      authError.textContent = "Please review the Privacy Notice and confirm before creating an account.";
+      return;
+    }
+  }
   authSubmitBtn.disabled = true;
-  authSubmitBtn.textContent = "Please wait…";
-  const email = authEmail.value.trim();
+  authSubmitBtn.textContent = isSignUpMode ? "Creating account…" : "Signing in…";
+  const email = authEmail.value.trim().toLowerCase();
   const password = authPassword.value;
+  const signingUp = isSignUpMode;
 
   try {
-    const { data, error } = isSignUpMode
-      ? await sb.auth.signUp({ email, password })
+    const result = signingUp
+      ? await sb.auth.signUp({
+          email, password,
+          options: {
+            data: { full_name: authName.value.trim() },
+            emailRedirectTo: `${window.location.origin}/`
+          }
+        })
       : await sb.auth.signInWithPassword({ email, password });
+    const { data, error } = result;
     if (error) throw error;
 
-    if (isSignUpMode && !data.session) {
-      authError.textContent = "Check your email to confirm your account, then log in.";
-      isSignUpMode = false;
-      authToggleBtn.click();
-      authToggleBtn.click(); // reset labels to login mode
+    if (signingUp && !data.session) {
+      pendingVerificationEmail = email;
+      authForm.hidden = true;
+      document.querySelector(".auth-toggle").hidden = true;
+      verificationPanel.hidden = false;
+      verificationStatus.textContent = "Verification email requested. Check your inbox and spam folder.";
       return;
     }
     currentUser = data.user;
     await afterLogin();
   } catch (err) {
     console.error("[auth]", err);
-    authError.textContent = err.message || "Something went wrong.";
+    const msg = String(err?.message || "");
+    if (/already registered|already exists/i.test(msg)) {
+      authError.textContent = "An account may already exist for this email. Try logging in or use password recovery in Supabase.";
+    } else if (/email not confirmed/i.test(msg)) {
+      authError.textContent = "Your email is not verified yet. Open the verification link in your inbox, then sign in.";
+    } else {
+      authError.textContent = err.message || "Something went wrong. Please try again.";
+    }
   } finally {
     authSubmitBtn.disabled = false;
-    authSubmitBtn.textContent = isSignUpMode ? "Sign Up" : "Log In";
+    authSubmitBtn.textContent = isSignUpMode ? "Create Account" : "Log In";
   }
 });
+
+resendVerificationBtn?.addEventListener("click", async () => {
+  if (!pendingVerificationEmail) return;
+  resendVerificationBtn.disabled = true;
+  verificationStatus.textContent = "Sending…";
+  try {
+    const { error } = await sb.auth.resend({ type: "signup", email: pendingVerificationEmail, options: { emailRedirectTo: `${window.location.origin}/` } });
+    if (error) throw error;
+    verificationStatus.textContent = "If the address is eligible, a new verification email has been requested. Check your inbox and spam folder.";
+  } catch (err) {
+    verificationStatus.textContent = err.message || "Could not resend the email. Wait a moment and try again.";
+  } finally {
+    window.setTimeout(() => { resendVerificationBtn.disabled = false; }, 30000);
+  }
+});
+
+function closePrivacyNotice() { document.getElementById("privacyNotice").hidden = true; }
+document.getElementById("privacyLink")?.addEventListener("click", e => { e.preventDefault(); document.getElementById("privacyNotice").hidden = false; });
+document.getElementById("privacyLinkBottom")?.addEventListener("click", e => { e.preventDefault(); document.getElementById("privacyNotice").hidden = false; });
+document.getElementById("closePrivacyBtn")?.addEventListener("click", closePrivacyNotice);
+document.getElementById("closePrivacyBtnBottom")?.addEventListener("click", closePrivacyNotice);
+document.getElementById("privacyNotice")?.addEventListener("click", e => { if (e.target.id === "privacyNotice") closePrivacyNotice(); });
 
 signOutBtn.addEventListener("click", async () => {
   await sb.auth.signOut();
@@ -632,11 +704,20 @@ async function openSession(sessionId, title) {
 }
 
 // ---------- Chat ----------
+
+const structuredChatStyle = document.createElement("style");
+structuredChatStyle.textContent = `
+  .structured-chat-text { white-space: pre-wrap; line-height: 1.65; overflow-wrap: anywhere; }
+  .from-marketra .structured-chat-text { max-width: 100%; }
+`;
+document.head.appendChild(structuredChatStyle);
+
 function addEntry(role, text) {
   const el = document.createElement("div");
   el.className = `entry ${role === "ai" ? "from-marketra" : "from-you"}`;
   el.innerHTML = `${role === "ai" ? '<span class="avatar"></span>' : ""}<p></p>`;
   el.querySelector("p").textContent = text;
+  if (role === "ai") el.querySelector("p").classList.add("structured-chat-text");
   feed.appendChild(el);
   feed.scrollTop = feed.scrollHeight;
   return el;
