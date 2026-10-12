@@ -5,20 +5,15 @@ const helmet = require("helmet");
 const path = require("path");
 const marketingRoutes = require("./routes/marketing");
 const socialRoutes = require("./routes/social");
+const adminRoutes = require("./routes/admin");
 
 const app = express();
 app.set("trust proxy", 3);
 
-// CSP is disabled here because this server is primarily a JSON API —
-// the real frontend is hosted separately on Netlify. Helmet's other
-// headers (X-Content-Type-Options, X-Frame-Options, HSTS, etc.) still
-// apply. If you start relying on this server's own static-file fallback
-// in production, revisit this and configure a real CSP instead of off.
+// Security headers
 app.use(helmet({ contentSecurityPolicy: false }));
 
-// Fail toward a known-safe default instead of wide-open "*" if
-// CORS_ORIGIN was never set on Render — this app's own Netlify URL,
-// rather than every origin on the internet.
+// CORS configuration
 const corsOrigin = process.env.CORS_ORIGIN;
 if (!corsOrigin) {
   console.warn(
@@ -30,11 +25,13 @@ app.use(cors({ origin: corsOrigin || "https://marketraai.netlify.app" }));
 
 app.use(express.json({ limit: "1mb" }));
 
-// Serve the static frontend (optional — you can also host it separately).
+// Serve the static frontend
 app.use(express.static(path.join(__dirname, "..", "frontend")));
 
+// API routes
 app.use("/api", marketingRoutes);
 app.use("/api/social", socialRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
