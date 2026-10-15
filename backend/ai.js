@@ -129,7 +129,22 @@ async function askMarketra({ business, history = [], message, allowWebSearch = f
   const cleaned = text.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
 
   try {
-    return JSON.parse(cleaned);
+    const parsed = JSON.parse(cleaned);
+
+    // For explicit caption requests, show the deliverable itself in the chat
+    // instead of the generic strategy dashboard. The frontend already renders
+    // a diagnosis-only response as a simple answer, so no frontend deploy is needed.
+    const asksForCaption = /\b(caption|captions)\b/i.test(message) &&
+      /\b(give|write|create|make|suggest|generate|need|want|draft|prepare|provide)\b/i.test(message);
+    const caption = typeof parsed?.assets?.caption === "string"
+      ? parsed.assets.caption.trim()
+      : "";
+
+    if (asksForCaption && caption) {
+      return { diagnosis: caption };
+    }
+
+    return parsed;
   } catch (err) {
     // The model didn't return clean JSON — surface the raw text rather
     // than crash, so the frontend can still show something useful.
