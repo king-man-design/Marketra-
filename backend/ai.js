@@ -128,14 +128,14 @@ async function askMarketra({ business, history = [], message, allowWebSearch = f
   const text = (response.text || "").trim();
   const cleaned = text.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
 
+  // Detect explicit caption requests before parsing. Gemini occasionally returns
+  // malformed dashboard JSON; for a caption request, return the requested caption
+  // instead of exposing the entire JSON blob in the chat.
+  const asksForCaption = /\b(caption|captions)\b/i.test(message) &&
+    /\b(give|write|create|make|suggest|generate|need|want|draft|prepare|provide)\b/i.test(message);
+
   try {
     const parsed = JSON.parse(cleaned);
-
-    // For explicit caption requests, show the deliverable itself in the chat
-    // instead of the generic strategy dashboard. The frontend already renders
-    // a diagnosis-only response as a simple answer, so no frontend deploy is needed.
-    const asksForCaption = /\b(caption|captions)\b/i.test(message) &&
-      /\b(give|write|create|make|suggest|generate|need|want|draft|prepare|provide)\b/i.test(message);
     const caption = typeof parsed?.assets?.caption === "string"
       ? parsed.assets.caption.trim()
       : "";
@@ -146,8 +146,21 @@ async function askMarketra({ business, history = [], message, allowWebSearch = f
 
     return parsed;
   } catch (err) {
-    // The model didn't return clean JSON — surface the raw text rather
-    // than crash, so the frontend can still show something useful.
+    // If Gemini's JSON is malformed, recover the caption field for direct
+    // caption requests. This prevents raw structured output from reaching users.
+    if (asksForCaption) {
+      const captionMatch = cleaned.match(/"caption"\s*:\s*("(?:\\.|[^"\\])*")/s);
+      if (captionMatch) {
+        try {
+          const recoveredCaption = JSON.parse(captionMatch[1]).trim();
+          if (recoveredCaption) return { diagnosis: recoveredCaption };
+        } catch (recoveryError) {
+          console.warn("[ai.js] Could not recover caption from malformed AI JSON.");
+        }
+      }
+    }
+
+    // For other requests, surface the raw text rather than crash.
     return {
       diagnosis: text,
       current_stage: "unknown",
