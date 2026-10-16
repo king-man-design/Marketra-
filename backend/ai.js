@@ -125,54 +125,10 @@ async function askMarketra({ business, history = [], message, allowWebSearch = f
 
   const response = result.response;
   console.info(`[ai.js] Using successful response from ${result.modelName}.`);
-  const text = (response.text || "").trim();
-  const cleaned = text.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
 
-  // Detect explicit caption requests before parsing. Gemini occasionally returns
-  // malformed dashboard JSON; for a caption request, return the requested caption
-  // instead of exposing the entire JSON blob in the chat.
-  const asksForCaption = /\b(caption|captions)\b/i.test(message) &&
-    /\b(give|write|create|make|suggest|generate|need|want|draft|prepare|provide)\b/i.test(message);
-
-  try {
-    const parsed = JSON.parse(cleaned);
-    const caption = typeof parsed?.assets?.caption === "string"
-      ? parsed.assets.caption.trim()
-      : "";
-
-    if (asksForCaption && caption) {
-      return { diagnosis: caption };
-    }
-
-    return parsed;
-  } catch (err) {
-    // If Gemini's JSON is malformed, recover the caption field for direct
-    // caption requests. This prevents raw structured output from reaching users.
-    if (asksForCaption) {
-      const captionMatch = cleaned.match(/"caption"\s*:\s*("(?:\\.|[^"\\])*")/s);
-      if (captionMatch) {
-        try {
-          const recoveredCaption = JSON.parse(captionMatch[1]).trim();
-          if (recoveredCaption) return { diagnosis: recoveredCaption };
-        } catch (recoveryError) {
-          console.warn("[ai.js] Could not recover caption from malformed AI JSON.");
-        }
-      }
-    }
-
-    // For other requests, surface the raw text rather than crash.
-    return {
-      diagnosis: text,
-      current_stage: "unknown",
-      priority: { title: "Review AI response", reason: "Response was not valid JSON." },
-      today: [],
-      next: [],
-      metrics: [],
-      decision_rule: "",
-      assumptions: [],
-      _parse_error: true,
-    };
-  }
+  // Pass Gemini's generated text through unchanged. Do not trim it, remove
+  // code fences, parse JSON, extract fields, or wrap it in a dashboard schema.
+  return typeof response.text === "string" ? response.text : "";
 }
 
 module.exports = { askMarketra };
