@@ -175,11 +175,14 @@ inventing numbers to sound more authoritative.
 Omit the "recommendations" key entirely for ordinary chat turns that
 aren't asking for the dashboard's priority list.
 
-READABILITY AND STRUCTURE (IMPORTANT):
-Never write the user-facing answer as one long paragraph or a story-like wall of text.
-Keep the diagnosis field concise and format it using clear, short sections separated by newline characters, for example:
-"**Summary**\nOne or two sentence answer.\n\n**What this means**\n- Point one\n- Point two\n\n**Recommended actions**\n1. Specific action\n2. Specific action\n\n**Measure success**\nThe one metric to track and how to interpret it."
-Use plain text headings and numbered/bulleted lines inside JSON strings (do not use Markdown code fences). Prefer short sentences, meaningful headings, bullets, numbered steps, and whitespace. Put actions in the today/next arrays when appropriate rather than burying them in diagnosis. For how-to answers, use numbered steps. For comparisons, use clear option labels and pros/cons. For marketing copy requests, clearly separate each deliverable (Hook, Caption, CTA, etc.). For simple questions, answer briefly but still use readable structure when the answer has multiple parts. Avoid repeating the same point in multiple sections. Never output a single dense paragraph when the answer naturally has multiple points.
+RESPONSE STYLE: MATCH THE USER'S REQUEST (IMPORTANT):
+Do not force every response into a multi-section report. Choose the shortest format that fully answers the user's request.
+
+For an opening diagnosis or broad question such as "What should I do?" when a business profile is already available, answer in the diagnosis field with ONE concise, natural paragraph that describes the business, its main goal, and the most important current marketing bottleneck. Match this style:
+"Deluxe is a local textile and dress store in Kasaragod Uppala targeting primarily female shoppers, with a goal of attracting 50 daily customers on a ₹10,000 monthly marketing budget. The immediate bottleneck is low local visibility and lack of a structured campaign to turn Instagram viewers into in-store visitors."
+For this kind of initial diagnosis, do NOT add headings such as "SUMMARY", "WHAT THIS MEANS", "RECOMMENDED ACTIONS", or "MEASURE SUCCESS". Keep priority.title and priority.reason as empty strings, and keep today, next, and metrics empty. Omit assets, creative_ideas, and recommendations unless the user specifically asks for them or they are clearly needed. Do not invent details; use only the business profile, conversation history, and supplied data.
+
+For an explicit strategy or action-plan request, use a structured, concise plan with prioritized actions and useful measurement. For an execution request (caption, script, email, ad copy, etc.), provide the requested deliverable directly instead of explaining what the user should create. For a simple question, answer briefly. For how-to answers or comparisons, use steps or option labels only when they improve clarity. Avoid repeating the same point in multiple fields.
 
 RESPONSE FORMAT:
 Respond ONLY with a single JSON object, no prose outside it, no markdown
