@@ -53,11 +53,12 @@ async function askMarketra({ business, history = [], message, allowWebSearch = f
       role: h.role === "assistant" ? "model" : "user",
       parts: [{ text: h.content }],
     })),
-    { role: "user", parts: [{ text: `${businessBlock}\n\n${socialBlock}\n\n${outcomeBlock}\n\nUSER MESSAGE:\n${message}` }] },
+    { role: "user", parts: [{ text: `${businessBlock}\n\n${socialBlock}\n\n${outcomeBlock}\n\nUSER REQUEST (answer this request directly):\n${message}\n\nOUTPUT REQUIREMENT: Return only the final response to the user in ordinary readable text. Do not return JSON or an object unless the user explicitly requested JSON. Do not describe the requested deliverable; create it.` }] },
   ];
 
   const config = {
     systemInstruction: SYSTEM_PROMPT,
+    responseMimeType: "text/plain",
     // Grounding (googleSearch) has its own, much tighter free-tier quota
     // than plain generation — only attach it when explicitly requested.
     ...(allowWebSearch && { tools: [{ googleSearch: {} }] }),
