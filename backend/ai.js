@@ -125,26 +125,9 @@ async function askMarketra({ business, history = [], message, allowWebSearch = f
 
   const response = result.response;
   console.info(`[ai.js] Using successful response from ${result.modelName}.`);
-  const text = (response.text || "").trim();
-  const cleaned = text.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
-
-  try {
-    return JSON.parse(cleaned);
-  } catch (err) {
-    // The model didn't return clean JSON — surface the raw text rather
-    // than crash, so the frontend can still show something useful.
-    return {
-      diagnosis: text,
-      current_stage: "unknown",
-      priority: { title: "Review AI response", reason: "Response was not valid JSON." },
-      today: [],
-      next: [],
-      metrics: [],
-      decision_rule: "",
-      assumptions: [],
-      _parse_error: true,
-    };
-  }
+  // Pass through Gemini's final response text. Do not parse it into a schema,
+  // expose a reasoning field, or replace it with a diagnosis placeholder.
+  return typeof response.text === "string" ? response.text : "";
 }
 
 module.exports = { askMarketra };
