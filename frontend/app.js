@@ -639,8 +639,20 @@ async function openSession(sessionId, title) {
 function addEntry(role, text) {
   const el = document.createElement("div");
   el.className = `entry ${role === "ai" ? "from-marketra" : "from-you"}`;
-  el.innerHTML = `${role === "ai" ? '<span class="avatar"></span>' : ""}<p></p>`;
-  el.querySelector("p").textContent = text;
+
+  if (role === "ai" && text) {
+    // Preserve paragraph boundaries from the API while safely rendering text.
+    const formattedHtml = String(text)
+      .split(/\n\s*\n/)
+      .map((paragraph) => `<p>${escapeHtml(paragraph.trim()).replace(/\n/g, "<br>")}</p>`)
+      .join("");
+
+    el.innerHTML = `<span class="avatar"></span><div class="message-content">${formattedHtml}</div>`;
+  } else {
+    el.innerHTML = `${role === "ai" ? '<span class="avatar"></span>' : ""}<p></p>`;
+    el.querySelector("p").textContent = text ?? "";
+  }
+
   feed.appendChild(el);
   feed.scrollTop = feed.scrollHeight;
   return el;
