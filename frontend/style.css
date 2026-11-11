@@ -29,6 +29,14 @@ h1,h2,h3,.brand-lockup { font-family: "Space Grotesk", sans-serif; }
 .debug-banner { display:none; position:fixed; inset:0 0 auto; z-index:9999; background:#c62828; color:#fff; padding:12px; font:12px monospace; }
 .view { min-height:100dvh; }
 
+/* Brand image sizing */
+.brand-logo {
+  display: block;
+  width: 152px;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
 /* Brand: gradient ribbon M inspired by the supplied Marketra logo link. */
 .brand-lockup { display:flex; align-items:center; gap:10px; color:#fff; letter-spacing:-.02em; }
 .brand-lockup strong { font-size:19px; font-weight:700; }
