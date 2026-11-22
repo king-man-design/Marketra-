@@ -29,14 +29,6 @@ h1,h2,h3,.brand-lockup { font-family: "Space Grotesk", sans-serif; }
 .debug-banner { display:none; position:fixed; inset:0 0 auto; z-index:9999; background:#c62828; color:#fff; padding:12px; font:12px monospace; }
 .view { min-height:100dvh; }
 
-/* Brand image sizing */
-.brand-logo {
-  display: block;
-  width: 152px;
-  height: auto;
-  max-width: 100%;
-  object-fit: contain;
-}
 /* Brand: gradient ribbon M inspired by the supplied Marketra logo link. */
 .brand-lockup { display:flex; align-items:center; gap:10px; color:#fff; letter-spacing:-.02em; }
 .brand-lockup strong { font-size:19px; font-weight:700; }
@@ -109,3 +101,6 @@ h1,h2,h3,.brand-lockup { font-family: "Space Grotesk", sans-serif; }
 .today-action-banner{margin:0 18px 14px;padding:18px;border-radius:16px;background:linear-gradient(135deg,#17132f,#35206e);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:18px;box-shadow:0 12px 30px rgba(58,36,120,.16)}
 .today-action-banner[hidden]{display:none}.today-action-banner h2{margin:4px 0 5px;font-size:18px;line-height:1.2}.today-action-banner p{margin:0;color:#d8d2f4;font-size:11px;line-height:1.5;max-width:620px}.today-action-banner .panel-kicker{color:#bcaaff}.today-action-banner .primary-btn{background:#fff;color:#4f35b8;flex-shrink:0}.measurement-panel{margin-top:18px}.outcomes-list{display:grid;gap:8px;padding:0 18px 18px}.outcome-item{border:1px solid #e8ebf2;background:#fafbfe;border-radius:12px;padding:12px 13px}.outcome-item>div{display:flex;justify-content:space-between;gap:12px;align-items:center}.outcome-metric{font-size:10px;color:#7b8598;text-transform:uppercase;letter-spacing:.08em;font-weight:800}.outcome-item strong{font-size:12px}.outcome-item p{margin:6px 0 3px;font-size:11px;color:#59647a;line-height:1.45}.outcome-item small{font-size:9px;color:#9aa3b2}.priority-measure-btn{border:1px solid #dce8e2;background:#f2fbf6;color:#21805d;border-radius:9px;padding:8px 10px;font-size:10px;font-weight:600}
 @media (max-width:600px){.today-action-banner{align-items:flex-start;flex-direction:column}.today-action-banner .primary-btn{width:100%}}
+
+.media-status{margin:0 12px 8px;padding:8px 11px;border:1px solid #e5e8ef;border-radius:10px;background:#fafbfe;color:#69748a;font-size:10px;line-height:1.45}.media-status.error{color:#b74b54;background:#fff6f6;border-color:#f0d1d4}.media-status.success{color:#21805d;background:#f2fbf6;border-color:#dce8e2}.chat-composer{align-items:center}.media-btn{width:42px;height:42px;border:1px solid #e2e6ee;border-radius:12px;background:#fff;color:#59647a;cursor:pointer;flex:0 0 auto}.media-btn:hover{border-color:#cfc8ff;color:#7056ee;background:#faf9ff}.media-btn.recording{background:#fff1f1;border-color:#efb6bb;color:#d94e55;animation:mediaPulse 1s infinite}.media-btn:disabled{opacity:.5;cursor:not-allowed}@keyframes mediaPulse{50%{transform:scale(.94);box-shadow:0 0 0 6px rgba(239,98,98,.08)}}
+@media (max-width:480px){.chat-composer{gap:5px;padding:9px}.media-btn{width:38px;height:38px}.send-btn{width:40px;height:40px}.chat-composer input{padding:11px 10px}}

@@ -56,6 +56,134 @@ const outcomesList = document.getElementById("outcomesList");
 const feed = document.getElementById("messages");
 const planEl = document.getElementById("plan");
 const composer = document.getElementById("composer");
+const voiceBtn = document.getElementById("voiceBtn");
+const videoBtn = document.getElementById("videoBtn");
+const videoInput = document.getElementById("videoInput");
+const mediaStatus = document.getElementById("mediaStatus");
+
+function setMediaStatus(message, type = "") {
+  if (!mediaStatus) return;
+  mediaStatus.textContent = message || "";
+  mediaStatus.className = `media-status ${type}`.trim();
+  mediaStatus.hidden = !message;
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result).split(",")[1] || "");
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function sendMedia(endpoint, payload) {
+  const options = await getAuthedFetchOptions({
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const res = await fetchWithTimeout(`${API_BASE}${endpoint}`, options);
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || body.message || `status ${res.status}`);
+  return body;
+}
+
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordingStream = null;
+
+async function startVoiceRecording() {
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+    setMediaStatus("Voice recording is not supported by this browser.", "error");
+    return;
+  }
+  try {
+    recordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const preferred = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find((t) => MediaRecorder.isTypeSupported(t));
+    mediaRecorder = preferred ? new MediaRecorder(recordingStream, { mimeType: preferred }) : new MediaRecorder(recordingStream);
+    recordedChunks = [];
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size) recordedChunks.push(e.data); };
+    mediaRecorder.onstop = async () => {
+      const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || "audio/webm" });
+      recordingStream?.getTracks().forEach((t) => t.stop());
+      recordingStream = null;
+      voiceBtn.classList.remove("recording");
+      voiceBtn.textContent = "🎙";
+      voiceBtn.disabled = true;
+      try {
+        setMediaStatus("Transcribing your voice…");
+        const base64 = await blobToBase64(blob);
+        const result = await sendMedia("/api/media/transcribe", { data: base64, mimeType: blob.type || "audio/webm", name: "marketra-voice.webm" });
+        if (result.transcript) {
+          promptInput.value = result.transcript;
+          promptInput.focus();
+          setMediaStatus("Voice converted to text. Review it and press send.", "success");
+        } else {
+          setMediaStatus("No speech was detected.", "error");
+        }
+      } catch (err) {
+        console.error("[voice]", err);
+        setMediaStatus(err.message || "Voice transcription failed.", "error");
+      } finally {
+        voiceBtn.disabled = false;
+      }
+    };
+    mediaRecorder.start();
+    voiceBtn.classList.add("recording");
+    voiceBtn.textContent = "■";
+    setMediaStatus("Recording… tap the microphone again to stop.");
+  } catch (err) {
+    console.error("[voice/start]", err);
+    setMediaStatus("Microphone permission was denied or unavailable.", "error");
+  }
+}
+
+function stopVoiceRecording() {
+  if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+}
+
+voiceBtn?.addEventListener("click", () => {
+  if (mediaRecorder && mediaRecorder.state === "recording") stopVoiceRecording();
+  else startVoiceRecording();
+});
+
+videoBtn?.addEventListener("click", () => videoInput?.click());
+videoInput?.addEventListener("change", async () => {
+  const file = videoInput.files?.[0];
+  videoInput.value = "";
+  if (!file) return;
+  if (file.size > 50 * 1024 * 1024) {
+    setMediaStatus("Video is too large. Maximum size is 50 MB.", "error");
+    return;
+  }
+  try {
+    videoBtn.disabled = true;
+    voiceBtn.disabled = true;
+    setMediaStatus(`Uploading ${file.name}…`);
+    const base64 = await blobToBase64(file);
+    setMediaStatus("Analyzing video with Marketra AI…");
+    const result = await sendMedia("/api/media/analyze-video", {
+      data: base64,
+      mimeType: file.type || "video/mp4",
+      name: file.name,
+      businessId: currentBusiness?.id || null,
+    });
+    if (result.analysis) {
+      addEntry("ai", result.analysis);
+      setMediaStatus("Video analysis complete.", "success");
+    } else {
+      setMediaStatus("The video analysis returned no text.", "error");
+    }
+  } catch (err) {
+    console.error("[video]", err);
+    setMediaStatus(err.message || "Video analysis failed.", "error");
+  } finally {
+    videoBtn.disabled = false;
+    voiceBtn.disabled = false;
+  }
+});
+
 
 // Keep the strategy hidden by default. The circular trigger sits directly
 // after the latest MARKETRA answer, and the panel expands in normal page flow.

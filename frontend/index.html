@@ -218,7 +218,14 @@
         <section id="chatView" class="app-view chat-view" hidden>
           <div class="chat-header"><div><span class="panel-kicker">MARKETRA AI</span><h1>AI Assistant</h1><p>Ask what to do next. Marketra will reason from your business context.</p></div><button class="secondary-btn" id="newChatFromHistory">＋ New Chat</button></div>
           <div class="chat-workspace"><div id="messages" class="feed"></div><div id="plan" class="plan-card" hidden></div></div>
-          <form id="composer" class="chat-composer"><input id="prompt" autocomplete="off" placeholder="Ask Marketra about your next marketing move…"><button class="send-btn" type="submit">↑</button></form>
+          <div id="mediaStatus" class="media-status" hidden></div>
+          <form id="composer" class="chat-composer">
+            <button id="voiceBtn" class="media-btn" type="button" title="Record voice">🎙</button>
+            <button id="videoBtn" class="media-btn" type="button" title="Analyze marketing video">▣</button>
+            <input id="videoInput" type="file" accept="video/mp4,video/webm,video/quicktime" hidden>
+            <input id="prompt" autocomplete="off" placeholder="Ask Marketra about your next marketing move…">
+            <button class="send-btn" type="submit">↑</button>
+          </form>
         </section>
 
         <!-- HISTORY -->
