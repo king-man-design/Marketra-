@@ -92,59 +92,145 @@ async function sendMedia(endpoint, payload) {
 let mediaRecorder = null;
 let recordedChunks = [];
 let recordingStream = null;
+let audioContext = null;
+let audioSource = null;
+let audioProcessor = null;
+let recordedSamples = [];
+let recordedSampleRate = 44100;
+
+function mergeFloat32Arrays(chunks) {
+  const length = chunks.reduce((total, chunk) => total + chunk.length, 0);
+  const result = new Float32Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return result;
+}
+
+function encodeWav(samples, sampleRate) {
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buffer);
+  const writeString = (offset, value) => {
+    for (let i = 0; i < value.length; i++) view.setUint8(offset + i, value.charCodeAt(i));
+  };
+  const write16 = (offset, value) => view.setUint16(offset, value, true);
+  const write32 = (offset, value) => view.setUint32(offset, value, true);
+
+  writeString(0, "RIFF");
+  write32(4, 36 + samples.length * 2);
+  writeString(8, "WAVE");
+  writeString(12, "fmt ");
+  write32(16, 16);
+  write16(20, 1); // PCM
+  write16(22, 1); // mono
+  write32(24, sampleRate);
+  write32(28, sampleRate * 2);
+  write16(32, 2);
+  write16(34, 16);
+  writeString(36, "data");
+  write32(40, samples.length * 2);
+
+  let offset = 44;
+  for (let i = 0; i < samples.length; i++, offset += 2) {
+    const sample = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+  }
+  return new Blob([buffer], { type: "audio/wav" });
+}
+
+async function stopVoiceRecording() {
+  if (!recordingStream && !audioProcessor) return;
+
+  try {
+    audioProcessor?.disconnect();
+    audioSource?.disconnect();
+    audioProcessor = null;
+    audioSource = null;
+    recordingStream?.getTracks().forEach((track) => track.stop());
+    recordingStream = null;
+    if (audioContext && audioContext.state !== "closed") await audioContext.close();
+    audioContext = null;
+
+    const samples = mergeFloat32Arrays(recordedSamples);
+    recordedSamples = [];
+    if (!samples.length) throw new Error("No audio was recorded.");
+
+    const blob = encodeWav(samples, recordedSampleRate);
+    voiceBtn.classList.remove("recording");
+    voiceBtn.textContent = "🎙";
+    voiceBtn.disabled = true;
+    try {
+      setMediaStatus("Transcribing your voice…");
+      const base64 = await blobToBase64(blob);
+      const result = await sendMedia("/api/media/transcribe", {
+        data: base64,
+        mimeType: "audio/wav",
+        name: "marketra-voice.wav",
+      });
+      if (result.transcript) {
+        promptInput.value = result.transcript;
+        promptInput.focus();
+        setMediaStatus("Voice converted to text. Review it and press send.", "success");
+      } else {
+        setMediaStatus("No speech was detected.", "error");
+      }
+    } catch (err) {
+      console.error("[voice]", err);
+      setMediaStatus(err.message || "Voice transcription failed.", "error");
+    } finally {
+      voiceBtn.disabled = false;
+    }
+  } catch (err) {
+    console.error("[voice/stop]", err);
+    setMediaStatus(err.message || "Voice recording failed.", "error");
+    voiceBtn.classList.remove("recording");
+    voiceBtn.textContent = "🎙";
+    voiceBtn.disabled = false;
+  }
+}
 
 async function startVoiceRecording() {
-  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+  if (!navigator.mediaDevices?.getUserMedia || !window.AudioContext && !window.webkitAudioContext) {
     setMediaStatus("Voice recording is not supported by this browser.", "error");
     return;
   }
   try {
     recordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const preferred = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find((t) => MediaRecorder.isTypeSupported(t));
-    mediaRecorder = preferred ? new MediaRecorder(recordingStream, { mimeType: preferred }) : new MediaRecorder(recordingStream);
-    recordedChunks = [];
-    mediaRecorder.ondataavailable = (e) => { if (e.data.size) recordedChunks.push(e.data); };
-    mediaRecorder.onstop = async () => {
-      const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || "audio/webm" });
-      recordingStream?.getTracks().forEach((t) => t.stop());
-      recordingStream = null;
-      voiceBtn.classList.remove("recording");
-      voiceBtn.textContent = "🎙";
-      voiceBtn.disabled = true;
-      try {
-        setMediaStatus("Transcribing your voice…");
-        const base64 = await blobToBase64(blob);
-        const result = await sendMedia("/api/media/transcribe", { data: base64, mimeType: blob.type || "audio/webm", name: "marketra-voice.webm" });
-        if (result.transcript) {
-          promptInput.value = result.transcript;
-          promptInput.focus();
-          setMediaStatus("Voice converted to text. Review it and press send.", "success");
-        } else {
-          setMediaStatus("No speech was detected.", "error");
-        }
-      } catch (err) {
-        console.error("[voice]", err);
-        setMediaStatus(err.message || "Voice transcription failed.", "error");
-      } finally {
-        voiceBtn.disabled = false;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    audioContext = new AudioContextClass();
+    if (audioContext.state === "suspended") await audioContext.resume();
+    recordedSampleRate = audioContext.sampleRate || 44100;
+    recordedSamples = [];
+
+    audioSource = audioContext.createMediaStreamSource(recordingStream);
+    audioProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+    audioProcessor.onaudioprocess = (event) => {
+      if (recordingStream) {
+        recordedSamples.push(new Float32Array(event.inputBuffer.getChannelData(0)));
       }
     };
-    mediaRecorder.start();
+    audioSource.connect(audioProcessor);
+    audioProcessor.connect(audioContext.destination);
+
     voiceBtn.classList.add("recording");
     voiceBtn.textContent = "■";
     setMediaStatus("Recording… tap the microphone again to stop.");
   } catch (err) {
     console.error("[voice/start]", err);
+    recordingStream?.getTracks().forEach((track) => track.stop());
+    recordingStream = null;
+    audioProcessor = null;
+    audioSource = null;
+    if (audioContext && audioContext.state !== "closed") await audioContext.close().catch(() => {});
+    audioContext = null;
     setMediaStatus("Microphone permission was denied or unavailable.", "error");
   }
 }
 
-function stopVoiceRecording() {
-  if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
-}
-
 voiceBtn?.addEventListener("click", () => {
-  if (mediaRecorder && mediaRecorder.state === "recording") stopVoiceRecording();
+  if (recordingStream) stopVoiceRecording();
   else startVoiceRecording();
 });
 
